@@ -1,0 +1,1 @@
+{"scene_id":"room_000","blend_path":"assets/fixture_scenes/room_000.blend","camera":"Camera","fixtures":[{"id":"lamp_0","prefixes":["TL_FIXTURE_lamp_0"],"light_prefixes":["TL_LIGHT_lamp_0"]},{"id":"lamp_1","prefixes":["TL_FIXTURE_lamp_1"],"light_prefixes":["TL_LIGHT_lamp_1"]}]}
