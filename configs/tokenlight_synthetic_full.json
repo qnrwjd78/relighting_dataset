@@ -1,14 +1,13 @@
 {
-  "output_root": "outputs/tokenlight_synthetic",
+  "output_root": "outputs/tokenlight_synthetic_1280",
   "object_manifest": "manifests/objects.txt",
   "hdri_manifest": "manifests/hdris.txt",
   "fixture_scene_manifest": "manifests/fixture_scenes.jsonl",
-  "scene_count": 10,
+  "scene_count": 5000,
   "seed": 20260524,
   "render": {
     "engine": "CYCLES",
     "device": "GPU",
-    "resolution": 960,
     "samples": 128,
     "denoise": true,
     "tile_size": 256,
@@ -34,12 +33,20 @@
   },
   "layout": {
     "ground": true,
-    "ground_size": 8.0,
-    "wall_probability": 0.7,
-    "corner_probability": 0.25,
-    "wall_distance": 1.8,
-    "wall_height": 3.0,
-    "randomize_receiver_material": true
+    "ground_size": 10.0,
+    "ground_size_range": [8.0, 12.0],
+    "wall_probability": 1.0,
+    "corner_probability": 0.35,
+    "wall_distance": 2.2,
+    "wall_distance_range": [1.7, 2.8],
+    "wall_height": 2.8,
+    "wall_height_range": [2.2, 3.6],
+    "wall_yaw_jitter_degrees": [-8.0, 8.0],
+    "cyclorama_probability": 0.0,
+    "cyclorama_radius_range": [0.55, 1.0],
+    "randomize_receiver_material": true,
+    "receiver_material_families": ["matte_neutral", "matte_tinted", "subtle_noise", "subtle_checker", "slightly_glossy_floor"],
+    "floor_glossy_probability": 0.2
   },
   "ambient": {
     "hdri_strength_range": [0.8, 1.2],
@@ -51,18 +58,19 @@
     "center": [0.0, 0.0, 0.6],
     "reference_object_size": 1.2,
     "light_volume_radius": 1.5,
-    "z_scale": 1.2,
+    "image_plane_fraction": 0.68,
+    "depth_fraction": 0.28,
     "position_range": {
       "x": [-1.0, 1.0],
       "y": [-1.0, 1.0],
-      "z": [0.05, 1.25]
+      "z": [-1.0, 1.0]
     }
   },
   "spatial": {
     "enabled": true,
     "positions_per_scene": 64,
-    "sampling": "stratified_random",
-    "fixed_debug_positions_first": true,
+    "sampling": "grid",
+    "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "fixed_radius": 0.06,
     "color": [1.0, 1.0, 1.0]

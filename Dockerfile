@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Seoul
@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdecor-0-0 \
     libjemalloc2 \
     libtbb12 \
+    tmux \
     && rm -rf /var/lib/apt/lists/*
 
 RUN git lfs install --system

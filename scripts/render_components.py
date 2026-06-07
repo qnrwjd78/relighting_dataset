@@ -5,12 +5,14 @@ import json
 import math
 import os
 import random
+import shutil
 import sys
 from pathlib import Path
 from typing import Iterable
 
 try:
     import bpy
+    from bpy_extras.object_utils import world_to_camera_view
     from mathutils import Matrix, Vector
 except ModuleNotFoundError as exc:  # pragma: no cover - must run inside Blender
     raise SystemExit("scripts/render_components.py must be run by Blender Python.") from exc
@@ -30,6 +32,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--samples", type=int, default=None)
+    parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip component EXR/mask renders.")
+    parser.add_argument("--light-preview", action="store_true", help="Render a PNG showing the sampled spatial light positions.")
+    parser.add_argument("--debug-light-preview", action="store_true", help="Deprecated alias for --light-preview.")
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
 
@@ -343,28 +348,174 @@ def normalize_objects(objects: list[bpy.types.Object], target_size: float) -> No
     apply_world_transform(objects, Matrix.Translation(lift))
 
 
-def create_receivers(config: dict, rng: random.Random) -> list[bpy.types.Object]:
+def sample_range(config_value, fallback: float, rng: random.Random) -> float:
+    if isinstance(config_value, list) and len(config_value) == 2:
+        return rng.uniform(float(config_value[0]), float(config_value[1]))
+    return float(fallback)
+
+
+def horizontal_camera_axes(camera: bpy.types.Object) -> tuple[Vector, Vector]:
+    right, _up, forward = camera_basis(camera)
+    forward.z = 0.0
+    if forward.length <= 1e-6:
+        forward = Vector((0.0, 1.0, 0.0))
+    forward.normalize()
+    right = forward.cross(Vector((0.0, 0.0, 1.0))).normalized()
+    return right, forward
+
+
+def create_oriented_quad(
+    name: str,
+    center: Vector,
+    axis_u: Vector,
+    axis_v: Vector,
+    width: float,
+    height: float,
+) -> bpy.types.Object:
+    u = axis_u.normalized() * (width * 0.5)
+    v = axis_v.normalized() * (height * 0.5)
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata([center - u - v, center + u - v, center + u + v, center - u + v], [], [(0, 1, 2, 3)])
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def mesh_visible_to_camera(obj: bpy.types.Object, camera: bpy.types.Object, samples: int = 7, margin: float = 0.03) -> bool:
+    if obj.type != "MESH" or not obj.data.polygons:
+        return False
+    scene = bpy.context.scene
+    world_verts = [obj.matrix_world @ v.co for v in obj.data.vertices]
+    for poly in obj.data.polygons:
+        verts = [world_verts[i] for i in poly.vertices]
+        if len(verts) < 4:
+            points = verts
+        else:
+            a, b, c, d = verts[:4]
+            points = []
+            for iy in range(samples):
+                ty = iy / max(samples - 1, 1)
+                left = a.lerp(d, ty)
+                right = b.lerp(c, ty)
+                for ix in range(samples):
+                    tx = ix / max(samples - 1, 1)
+                    points.append(left.lerp(right, tx))
+        for point in points:
+            co = world_to_camera_view(scene, camera, point)
+            if co.z > 0.0 and -margin <= co.x <= 1.0 + margin and -margin <= co.y <= 1.0 + margin:
+                return True
+    return False
+
+
+def remove_camera_invisible_walls(receivers: list[bpy.types.Object], camera: bpy.types.Object) -> list[bpy.types.Object]:
+    bpy.context.view_layer.update()
+    kept = []
+    for obj in receivers:
+        if obj.name in {"TL_Ground", "TL_BackWall"} or mesh_visible_to_camera(obj, camera):
+            kept.append(obj)
+        else:
+            bpy.data.objects.remove(obj, do_unlink=True)
+    return kept
+
+
+def receiver_bounds_to_meta(bounds: dict) -> dict:
+    return {
+        "origin": vec_to_list(bounds["origin"]),
+        "right": vec_to_list(bounds["right"]),
+        "forward": vec_to_list(bounds["forward"]),
+        "front_y": float(bounds["front_y"]),
+        "back_y": float(bounds["back_y"]),
+        "half_width": float(bounds["half_width"]),
+        "floor_z": float(bounds["floor_z"]),
+        "wall_height": float(bounds["wall_height"]),
+        "kept_walls": list(bounds.get("kept_walls", [])),
+    }
+
+
+def point_inside_receiver_bounds(point: Vector, bounds: dict | None, radius: float, margin: float = 0.02) -> tuple[bool, str | None]:
+    if not bounds:
+        return True, None
+    safety = radius + margin
+    rel = point - bounds["origin"]
+    x = rel.dot(bounds["right"])
+    y = rel.dot(bounds["forward"])
+    z = point.z
+    if z < bounds["floor_z"] + safety:
+        return False, "below_floor"
+    if z > bounds["floor_z"] + bounds["wall_height"] - safety:
+        return False, "above_wall_height"
+    if y > bounds["back_y"] - safety:
+        return False, "behind_back_wall"
+    if y < bounds["front_y"] + safety:
+        return False, "outside_ground_front"
+    if abs(x) > bounds["half_width"] - safety:
+        return False, "outside_side_bounds"
+    return True, None
+
+
+def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> list[bpy.types.Object]:
     layout = config["layout"]
     receivers: list[bpy.types.Object] = []
+    right, forward = horizontal_camera_axes(camera)
+    origin = Vector((center.x, center.y, 0.0))
+    room_width = max(sample_range(layout.get("ground_size_range"), float(layout.get("ground_size", 10.0)), rng), 24.0)
+    back_y = max(sample_range(layout.get("wall_distance_range"), float(layout.get("wall_distance", 2.4)), rng), 2.4)
+    front_y = -max(room_width * 0.75, 14.0)
+    depth = back_y - front_y
+    wall_height = max(sample_range(layout.get("wall_height_range"), float(layout.get("wall_height", 3.0)), rng), 10.0)
+    up = Vector((0.0, 0.0, 1.0))
+
     if layout.get("ground", True):
-        size = float(layout.get("ground_size", 8.0))
-        bpy.ops.mesh.primitive_plane_add(size=size, location=(0.0, 0.0, 0.0))
-        ground = bpy.context.object
-        ground.name = "TL_Ground"
+        ground = create_oriented_quad(
+            "TL_Ground",
+            center=origin + forward * ((front_y + back_y) * 0.5),
+            axis_u=right,
+            axis_v=forward,
+            width=room_width,
+            height=depth,
+        )
         ground.data.materials.append(receiver_material("tl_ground_mat", rng, config))
         receivers.append(ground)
 
-    if rng.random() < float(layout.get("wall_probability", 0.7)):
-        receivers.append(create_wall("TL_BackWall", y=float(layout.get("wall_distance", 1.8)), config=config, rng=rng))
-        if rng.random() < float(layout.get("corner_probability", 0.25)):
-            wall = create_wall("TL_SideWall", y=0.0, config=config, rng=rng)
-            wall.location.x = -float(layout.get("wall_distance", 1.8))
-            wall.location.y = 0.0
-            wall.rotation_euler[2] = math.radians(90)
-            receivers.append(wall)
+    if rng.random() < float(layout.get("wall_probability", 1.0)):
+        back_wall = create_oriented_quad(
+            "TL_BackWall",
+            center=origin + forward * back_y + up * (wall_height * 0.5),
+            axis_u=right,
+            axis_v=up,
+            width=room_width,
+            height=wall_height,
+        )
+        back_wall.data.materials.append(receiver_material("TL_BackWall_mat", rng, config))
+        receivers.append(back_wall)
+
+        for side_name, side_sign in (("TL_LeftWall", -1.0), ("TL_RightWall", 1.0)):
+            side_wall = create_oriented_quad(
+                side_name,
+                center=origin + right * (side_sign * room_width * 0.5) + forward * ((front_y + back_y) * 0.5) + up * (wall_height * 0.5),
+                axis_u=forward,
+                axis_v=up,
+                width=depth,
+                height=wall_height,
+            )
+            side_wall.data.materials.append(receiver_material(f"{side_name}_mat", rng, config))
+            receivers.append(side_wall)
 
     tag_objects(receivers, "TL_RECEIVER")
-    return receivers
+    kept = remove_camera_invisible_walls(receivers, camera)
+    config["_runtime"]["receiver_bounds"] = {
+        "origin": origin,
+        "right": right,
+        "forward": forward,
+        "front_y": front_y,
+        "back_y": back_y,
+        "half_width": room_width * 0.5,
+        "floor_z": 0.0,
+        "wall_height": wall_height,
+        "kept_walls": [obj.name for obj in kept if obj.name != "TL_Ground"],
+    }
+    return kept
 
 
 def receiver_material(name: str, rng: random.Random, config: dict) -> bpy.types.Material:
@@ -429,6 +580,79 @@ def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy
     return cam, meta
 
 
+def objects_fit_camera(objects: list[bpy.types.Object], camera: bpy.types.Object, margin: float) -> bool:
+    scene = bpy.context.scene
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        eval_obj = obj.evaluated_get(depsgraph)
+        for corner in eval_obj.bound_box:
+            co = world_to_camera_view(scene, camera, eval_obj.matrix_world @ Vector(corner))
+            if co.z <= 0.0:
+                return False
+            if co.x < margin or co.x > 1.0 - margin or co.y < margin or co.y > 1.0 - margin:
+                return False
+    return True
+
+
+def points_fit_camera(points: list[Vector], camera: bpy.types.Object, margin: float) -> bool:
+    scene = bpy.context.scene
+    for point in points:
+        co = world_to_camera_view(scene, camera, point)
+        if co.z <= 0.0:
+            return False
+        if co.x < margin or co.x > 1.0 - margin or co.y < margin or co.y > 1.0 - margin:
+            return False
+    return True
+
+
+def fit_camera_to_objects(
+    camera: bpy.types.Object,
+    objects: list[bpy.types.Object],
+    look_target: Vector,
+    margin: float = 0.08,
+    max_steps: int = 48,
+) -> dict:
+    adjusted = False
+    bpy.context.view_layer.update()
+    for _ in range(max_steps):
+        if objects_fit_camera(objects, camera, margin):
+            break
+        direction = Vector(camera.location) - look_target
+        if direction.length <= 1e-6:
+            break
+        camera.location = look_target + direction * 1.08
+        look_at(camera, look_target)
+        bpy.context.view_layer.update()
+        adjusted = True
+    return {
+        "adjusted": adjusted,
+        "location": vec_to_list(Vector(camera.location)),
+        "distance": float((Vector(camera.location) - look_target).length),
+        "margin": margin,
+    }
+
+
+def fit_camera_to_points(
+    camera: bpy.types.Object,
+    points: list[Vector],
+    look_target: Vector,
+    margin: float = 0.04,
+    max_steps: int = 64,
+) -> None:
+    bpy.context.view_layer.update()
+    for _ in range(max_steps):
+        if points_fit_camera(points, camera, margin):
+            break
+        direction = Vector(camera.location) - look_target
+        if direction.length <= 1e-6:
+            break
+        camera.location = look_target + direction * 1.08
+        look_at(camera, look_target)
+        bpy.context.view_layer.update()
+
+
 def camera_basis(camera: bpy.types.Object) -> tuple[Vector, Vector, Vector]:
     rot = camera.matrix_world.to_quaternion()
     right = (rot @ Vector((1.0, 0.0, 0.0))).normalized()
@@ -439,11 +663,15 @@ def camera_basis(camera: bpy.types.Object) -> tuple[Vector, Vector, Vector]:
 
 def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, center: Vector) -> Vector:
     canonical = config["canonical"]
-    radius = float(canonical.get("light_volume_radius", 1.5))
-    z_scale = float(canonical.get("z_scale", 1.2))
-    right, _cam_up, forward = camera_basis(camera)
-    world_up = Vector((0.0, 0.0, 1.0))
-    return center + float(p[0]) * radius * right + float(p[1]) * radius * forward + float(p[2]) * z_scale * world_up
+    right, up, forward = camera_basis(camera)
+    camera_location = Vector(camera.location)
+    center_depth = max((center - camera_location).dot(forward), 0.1)
+    image_fraction = float(canonical.get("image_plane_fraction", 0.68))
+    depth_fraction = float(canonical.get("depth_fraction", 0.28))
+    depth = max(0.1, center_depth + float(p[2]) * center_depth * depth_fraction)
+    half_width = depth * math.tan(camera.data.angle_x * 0.5) * image_fraction
+    half_height = depth * math.tan(camera.data.angle_y * 0.5) * image_fraction
+    return camera_location + forward * depth + right * (float(p[0]) * half_width) + up * (float(p[1]) * half_height)
 
 
 def set_hdri_world(hdri_path: str | None, strength: float, rotation_z: float, fallback_color: list[float]) -> dict:
@@ -547,7 +775,7 @@ def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[floa
     count = int(spatial.get("positions_per_scene", 64))
     pr = config["canonical"]["position_range"]
     positions: list[list[float]] = []
-    if spatial.get("fixed_debug_positions_first", True):
+    if spatial.get("fixed_debug_positions_first", False):
         positions.extend(
             [
                 [-1.0, 0.0, 0.5],
@@ -558,15 +786,144 @@ def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[floa
                 [0.0, 0.0, 0.25],
             ]
         )
+    remaining = count - len(positions)
+    sampling = spatial.get("sampling", "stratified_random")
+    if remaining > 0 and sampling in {"stratified_random", "grid"}:
+        side = max(1, math.ceil(remaining ** (1.0 / 3.0)))
+        cells = [(ix, iy, iz) for iz in range(side) for iy in range(side) for ix in range(side)]
+        if sampling == "stratified_random":
+            rng.shuffle(cells)
+        cells = cells[:remaining]
+        ranges = [pr["x"], pr["y"], pr["z"]]
+        for ix, iy, iz in cells:
+            coords = []
+            for cell_index, axis_range in zip((ix, iy, iz), ranges):
+                lo, hi = float(axis_range[0]), float(axis_range[1])
+                cell_lo = lo + (hi - lo) * (cell_index / side)
+                cell_hi = lo + (hi - lo) * ((cell_index + 1) / side)
+                if sampling == "grid":
+                    coords.append((cell_lo + cell_hi) * 0.5)
+                else:
+                    coords.append(rng.uniform(cell_lo, cell_hi))
+            positions.append(coords)
     while len(positions) < count:
-        positions.append(
-            [
-                rng.uniform(*pr["x"]),
-                rng.uniform(*pr["y"]),
-                rng.uniform(*pr["z"]),
-            ]
-        )
+        positions.append([rng.uniform(*pr["x"]), rng.uniform(*pr["y"]), rng.uniform(*pr["z"])])
     return positions[:count]
+
+
+def debug_light_material(layer_index: int) -> bpy.types.Material:
+    palette = [
+        (0.1, 0.35, 1.0),
+        (0.1, 1.0, 1.0),
+        (1.0, 0.9, 0.1),
+        (1.0, 0.1, 0.1),
+    ]
+    color = palette[layer_index % len(palette)]
+    return make_emission_mat(f"TL_debug_light_pos_layer_{layer_index:02d}_mat", color, strength=0.75)
+
+
+def debug_light_z_layers(positions: list[list[float]], layer_count: int = 4) -> dict[int, int]:
+    ordered = sorted(enumerate(positions), key=lambda item: item[1][2])
+    if not ordered:
+        return {}
+    per_layer = max(1, math.ceil(len(ordered) / layer_count))
+    layers = {}
+    for rank, (index, _position) in enumerate(ordered):
+        layers[index] = min(layer_count - 1, rank // per_layer)
+    return layers
+
+
+def create_debug_curve_line(name: str, start: Vector, end: Vector, material: bpy.types.Material, bevel_depth: float = 0.006) -> bpy.types.Object:
+    curve = bpy.data.curves.new(name, type="CURVE")
+    curve.dimensions = "3D"
+    curve.resolution_u = 1
+    curve.bevel_depth = bevel_depth
+    curve.bevel_resolution = 1
+    spline = curve.splines.new("POLY")
+    spline.points.add(1)
+    spline.points[0].co = (start.x, start.y, start.z, 1.0)
+    spline.points[1].co = (end.x, end.y, end.z, 1.0)
+    obj = bpy.data.objects.new(name, curve)
+    obj.data.materials.append(material)
+    bpy.context.collection.objects.link(obj)
+    return obj
+
+
+def add_debug_light_volume_bounds(config: dict, camera: bpy.types.Object, center: Vector) -> list[bpy.types.Object]:
+    pr = config["canonical"]["position_range"]
+    xs = [float(pr["x"][0]), float(pr["x"][1])]
+    ys = [float(pr["y"][0]), float(pr["y"][1])]
+    zs = [float(pr["z"][0]), float(pr["z"][1])]
+    corners = {
+        (ix, iy, iz): canonical_to_world([xs[ix], ys[iy], zs[iz]], camera, config, center)
+        for ix in range(2)
+        for iy in range(2)
+        for iz in range(2)
+    }
+    edges = []
+    for ix in range(2):
+        for iy in range(2):
+            edges.append(((ix, iy, 0), (ix, iy, 1)))
+    for ix in range(2):
+        for iz in range(2):
+            edges.append(((ix, 0, iz), (ix, 1, iz)))
+    for iy in range(2):
+        for iz in range(2):
+            edges.append(((0, iy, iz), (1, iy, iz)))
+
+    material = make_emission_mat("TL_debug_light_volume_bounds_mat", (1.0, 1.0, 1.0), strength=1.0)
+    return [
+        create_debug_curve_line(f"TL_Debug_LightVolume_{i:02d}", corners[a], corners[b], material)
+        for i, (a, b) in enumerate(edges)
+    ]
+
+
+def debug_light_volume_points(config: dict, camera: bpy.types.Object, center: Vector) -> list[Vector]:
+    pr = config["canonical"]["position_range"]
+    xs = [float(pr["x"][0]), float(pr["x"][1])]
+    ys = [float(pr["y"][0]), float(pr["y"][1])]
+    zs = [float(pr["z"][0]), float(pr["z"][1])]
+    return [
+        canonical_to_world([x, y, z], camera, config, center)
+        for x in xs
+        for y in ys
+        for z in zs
+    ]
+
+
+def render_light_position_preview(
+    scene_dir: Path,
+    positions: list[list[float]],
+    config: dict,
+    camera: bpy.types.Object,
+    center: Vector,
+) -> str:
+    original_location = Vector(camera.location)
+    original_rotation = camera.rotation_euler.copy()
+    debug_objects = add_debug_light_volume_bounds(config, camera, center)
+    z_layers = debug_light_z_layers(positions)
+    for i, p_can in enumerate(positions):
+        p_world = canonical_to_world(p_can, camera, config, center)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=0.015, location=p_world)
+        marker = bpy.context.object
+        marker.name = f"TL_Debug_LightPos_{i:03d}"
+        marker.data.materials.append(debug_light_material(z_layers.get(i, 0)))
+        debug_objects.append(marker)
+    rel_path = f"../preview/{scene_dir.name}_light_positions.png"
+    right, up, _forward = camera_basis(camera)
+    distance = max((original_location - center).length, 0.1)
+    camera.location = original_location + right * (distance * 0.12) + up * (distance * 0.10) + (original_location - center).normalized() * (distance * 0.06)
+    look_at(camera, center)
+    bpy.context.view_layer.update()
+    try:
+        render_png(scene_dir / rel_path)
+    finally:
+        camera.location = original_location
+        camera.rotation_euler = original_rotation
+        bpy.context.view_layer.update()
+        for obj in debug_objects:
+            bpy.data.objects.remove(obj, do_unlink=True)
+    return rel_path
 
 
 def render_object_mask(scene_dir: Path, subject_objects: list[bpy.types.Object]) -> str:
@@ -604,29 +961,50 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     remove_all_lights()
     ambient_render = "spatial/ambient.exr"
     render_exr(scene_dir / ambient_render)
+    ambient_png = f"../preview/{scene_dir.name}_ambient.png"
+    render_png(scene_dir / ambient_png)
+    positions = sample_spatial_positions(config, rng)
+    light_position_preview = None
+    if config.get("_light_preview", False):
+        light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, center)
 
     set_black_world()
-    positions = sample_spatial_positions(config, rng)
     lights_meta = []
     spatial = config["spatial"]
     radius = float(spatial.get("fixed_radius", 0.06))
+    receiver_bounds = config["_runtime"].get("receiver_bounds")
+    invalid_black_source: str | None = None
     for light_index, p_can in enumerate(positions):
         p_world = canonical_to_world(p_can, camera, config, center)
-        light = create_point_light(
-            f"TL_Point_{light_index:03d}",
-            p_world,
-            float(spatial.get("base_energy", 500.0)),
-            radius,
-            spatial.get("color", [1.0, 1.0, 1.0]),
-        )
         rel_path = f"spatial/point_lights/light_{light_index:03d}.exr"
-        render_exr(scene_dir / rel_path)
-        bpy.data.objects.remove(light, do_unlink=True)
+        valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, radius)
+        copied_from = None
+        if valid:
+            light = create_point_light(
+                f"TL_Point_{light_index:03d}",
+                p_world,
+                float(spatial.get("base_energy", 500.0)),
+                radius,
+                spatial.get("color", [1.0, 1.0, 1.0]),
+            )
+            render_exr(scene_dir / rel_path)
+            bpy.data.objects.remove(light, do_unlink=True)
+        else:
+            if invalid_black_source is None:
+                render_exr(scene_dir / rel_path)
+                invalid_black_source = rel_path
+            else:
+                (scene_dir / rel_path).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(scene_dir / invalid_black_source, scene_dir / rel_path)
+                copied_from = invalid_black_source
         lights_meta.append(
             {
                 "id": light_index,
                 "canonical_position": p_can,
                 "world_position": vec_to_list(p_world),
+                "valid": valid,
+                "skip_reason": skip_reason,
+                "copied_from": copied_from,
                 "energy": float(spatial.get("base_energy", 500.0)),
                 "canonical_radius": radius,
                 "world_radius": radius,
@@ -635,8 +1013,15 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         )
     return {
         "ambient_render": ambient_render,
+        "ambient_png": ambient_png,
+        "light_position_preview": light_position_preview,
         "ambient_source": source,
+        "light_volume_center": vec_to_list(center),
+        "light_volume_center_source": "camera_look_at",
+        "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
+        "valid_point_light_count": sum(1 for light in lights_meta if light["valid"]),
+        "invalid_point_light_count": sum(1 for light in lights_meta if not light["valid"]),
         "fixed_radius": radius,
         "point_lights": lights_meta,
     }
@@ -657,10 +1042,10 @@ def render_diffuse_components(scene_dir: Path, config: dict, rng: random.Random,
     spread_count = int(diffuse.get("spread_count", 6))
     spread_min, spread_max = diffuse.get("spread_degrees_range", [6.0, 70.0])
     norm_min, norm_max = diffuse.get("normalize_spread_to", [-1.0, 1.0])
+    spread_values = sorted(rng.uniform(float(spread_min), float(spread_max)) for _ in range(spread_count))
     spreads = []
-    for i in range(spread_count):
-        t = 0.0 if spread_count == 1 else i / (spread_count - 1)
-        spread_deg = spread_min + t * (spread_max - spread_min)
+    for i, spread_deg in enumerate(spread_values):
+        t = 0.0 if float(spread_max) == float(spread_min) else (spread_deg - float(spread_min)) / (float(spread_max) - float(spread_min))
         distance = max((p_world - center).length, 0.1)
         area_size = 2.0 * distance * math.tan(math.radians(spread_deg) * 0.5)
         light = create_area_light(
@@ -710,11 +1095,61 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
     asset = rng.choice(objects) if objects else None
     primitive = rng.choice(primitives)
     subject_objects = import_asset_or_primitive(asset, primitive, rng, config)
-    create_receivers(config, rng)
 
     bbox_min, bbox_max = mesh_bbox(subject_objects)
     center = (bbox_min + bbox_max) * 0.5
     camera, camera_meta = create_camera(config, rng, center)
+    look_target = Vector(camera_meta["look_at"])
+    framing_meta = fit_camera_to_objects(camera, subject_objects, look_target)
+    camera_meta["location"] = framing_meta["location"]
+    camera_meta["distance"] = framing_meta["distance"]
+    camera_meta["framing"] = framing_meta
+    create_receivers(config, rng, camera, center)
+
+    if config.get("_debug_preview_only", False):
+        ambient = config["ambient"]
+        hdris = config["_runtime"]["hdris"]
+        hdri_path = rng.choice(hdris) if hdris else None
+        hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
+        hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
+        source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
+        remove_all_lights()
+        light_position_preview = None
+        if config.get("_light_preview", False):
+            positions = sample_spatial_positions(config, rng)
+            light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, look_target)
+        meta = {
+            "schema": "tokenlight_synthetic_components_v1",
+            "scene_id": scene_id,
+            "scene_type": "object_centric_debug_preview",
+            "object": {
+                "path": asset,
+                "primitive": None if asset else primitive,
+                "target_size": float(config["object"].get("target_size", 1.2)),
+                "bbox_min": vec_to_list(bbox_min),
+                "bbox_max": vec_to_list(bbox_max),
+                "center": vec_to_list(center),
+            },
+            "camera": camera_meta,
+            "render": {
+                "resolution": [bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y],
+                "samples": int(config["render"].get("samples", 128)),
+                "engine": bpy.context.scene.render.engine,
+                "linear_rgb": True,
+                "tone_mapping_applied": False,
+            },
+            "canonical": config["canonical"],
+            "debug": {
+                "preview_only": True,
+                "ambient_source": source,
+                "light_position_preview": light_position_preview,
+                "light_volume_center": vec_to_list(look_target),
+                "light_volume_center_source": "camera_look_at",
+            },
+        }
+        write_json(scene_dir / "meta.json", meta)
+        return meta
+
     mask_path = render_object_mask(scene_dir, subject_objects)
 
     meta = {
@@ -742,9 +1177,9 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
     }
 
     if only in ("all", "spatial") and config["spatial"].get("enabled", True):
-        meta["spatial"] = render_spatial_components(scene_dir, config, rng, camera, center)
+        meta["spatial"] = render_spatial_components(scene_dir, config, rng, camera, look_target)
     if only in ("all", "diffuse") and config["diffuse"].get("enabled", True):
-        meta["diffuse"] = render_diffuse_components(scene_dir, config, rng, camera, center)
+        meta["diffuse"] = render_diffuse_components(scene_dir, config, rng, camera, look_target)
 
     write_json(scene_dir / "meta.json", meta)
     return meta
@@ -909,6 +1344,8 @@ def main() -> int:
         config["render"]["resolution_y"] = args.height
     if args.samples is not None:
         config["render"]["samples"] = args.samples
+    config["_debug_preview_only"] = bool(args.debug)
+    config["_light_preview"] = bool(args.light_preview or args.debug_light_preview or args.debug)
 
     object_manifest = resolve_path(root, config.get("object_manifest"))
     hdri_manifest = resolve_path(root, config.get("hdri_manifest"))
@@ -930,7 +1367,7 @@ def main() -> int:
             print(f"[TokenLight] Rendering object-centric scene {i}", flush=True)
             metas.append(render_object_scene(i, config, root, args.only))
 
-    if args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
+    if not args.debug and args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
         fixture_rows = config["_runtime"]["fixture_scenes"]
         if fixture_rows and config["fixtures"].get("render_if_manifest_exists", True):
             for j, row in enumerate(fixture_rows):
