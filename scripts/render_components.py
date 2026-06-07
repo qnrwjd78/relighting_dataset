@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip component EXR/mask renders.")
     parser.add_argument("--light-preview", action="store_true", help="Render a PNG showing the sampled spatial light positions.")
     parser.add_argument("--debug-light-preview", action="store_true", help="Deprecated alias for --light-preview.")
+    parser.add_argument("--pbr", action="store_true", help="Render extra PBR maps: depth, normal, albedo, roughness.")
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
 
@@ -770,6 +771,238 @@ def render_png(path: Path) -> None:
     scene.render.image_settings.color_mode = "RGB"
 
 
+def first_existing_socket(outputs, names: list[str]):
+    for name in names:
+        if name in outputs:
+            return outputs[name]
+    return None
+
+
+def add_file_output_node(
+    tree,
+    name: str,
+    base_path: Path,
+    prefix: str,
+    file_format: str = "OPEN_EXR",
+    color_mode: str = "RGB",
+    color_depth: str = "16",
+):
+    node = tree.nodes.new("CompositorNodeOutputFile")
+    node.name = name
+    node.label = name
+    node.base_path = str(base_path)
+    node.file_slots[0].path = f"{prefix}_"
+    node.format.file_format = file_format
+    node.format.color_mode = color_mode
+    node.format.color_depth = color_depth
+    return node
+
+
+def move_compositor_output(tmp_dir: Path, prefix: str, target: Path) -> str:
+    matches = sorted(tmp_dir.glob(f"{prefix}_*{target.suffix}"))
+    if not matches:
+        raise RuntimeError(f"Compositor did not write {prefix} EXR in {tmp_dir}")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists():
+        target.unlink()
+    shutil.move(str(matches[-1]), str(target))
+    return str(target)
+
+
+def material_principled_input(mat: bpy.types.Material | None, input_name: str, fallback):
+    if not mat or not mat.use_nodes:
+        return fallback
+    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    if not bsdf or input_name not in bsdf.inputs:
+        return fallback
+    value = bsdf.inputs[input_name].default_value
+    if input_name == "Base Color":
+        return tuple(float(value[i]) for i in range(3))
+    return float(value)
+
+
+def make_property_override_material(name: str, value: float) -> bpy.types.Material:
+    v = max(0.0, min(1.0, float(value)))
+    return make_emission_mat(name, (v, v, v), strength=1.0)
+
+
+def object_material_snapshot() -> dict[str, list[bpy.types.Material]]:
+    return {obj.name: list(obj.data.materials) for obj in bpy.data.objects if obj.type == "MESH"}
+
+
+def restore_object_materials(snapshot: dict[str, list[bpy.types.Material]]) -> None:
+    for obj in bpy.data.objects:
+        if obj.type == "MESH" and obj.name in snapshot:
+            obj.data.materials.clear()
+            for mat in snapshot[obj.name]:
+                obj.data.materials.append(mat)
+
+
+def render_material_property_map(scene_dir: Path, rel_path: str, property_name: str, fallback: float) -> str:
+    snapshot = object_material_snapshot()
+    cache: dict[float, bpy.types.Material] = {}
+    try:
+        for obj in bpy.data.objects:
+            if obj.type != "MESH":
+                continue
+            original = snapshot.get(obj.name, [])
+            obj.data.materials.clear()
+            source_materials = original or [None]
+            for slot_index, mat in enumerate(source_materials):
+                value = material_principled_input(mat, property_name, fallback)
+                key = round(float(value), 4)
+                if key not in cache:
+                    safe_name = property_name.lower().replace(" ", "_")
+                    cache[key] = make_property_override_material(f"TL_pbr_{safe_name}_{slot_index}_{key:.4f}", key)
+                obj.data.materials.append(cache[key])
+        set_black_world()
+        render_exr(scene_dir / rel_path)
+    finally:
+        restore_object_materials(snapshot)
+    return rel_path
+
+
+def lerp_color(a: tuple[float, float, float], b: tuple[float, float, float], t: float) -> tuple[float, float, float]:
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+
+
+def depth_preview_color(t: float) -> tuple[float, float, float]:
+    stops = [
+        (0.00, (0.95, 0.05, 0.18)),
+        (0.32, (1.00, 0.72, 0.18)),
+        (0.55, (0.78, 0.95, 0.38)),
+        (0.78, (0.00, 0.72, 0.86)),
+        (1.00, (0.08, 0.10, 0.55)),
+    ]
+    t = max(0.0, min(1.0, float(t)))
+    for i in range(len(stops) - 1):
+        left_t, left_color = stops[i]
+        right_t, right_color = stops[i + 1]
+        if left_t <= t <= right_t:
+            local_t = 0.0 if right_t == left_t else (t - left_t) / (right_t - left_t)
+            return lerp_color(left_color, right_color, local_t)
+    return stops[-1][1]
+
+
+def render_depth_preview_png(exr_path: Path, png_path: Path) -> dict:
+    image = bpy.data.images.load(str(exr_path), check_existing=False)
+    try:
+        width, height = image.size
+        pixels = list(image.pixels)
+        values = [
+            float(pixels[i])
+            for i in range(0, len(pixels), 4)
+            if math.isfinite(float(pixels[i])) and 0.0 < float(pixels[i]) < 1.0e6
+        ]
+        if not values:
+            depth_min, depth_max = 0.0, 1.0
+        else:
+            values.sort()
+            low_index = int((len(values) - 1) * 0.01)
+            high_index = int((len(values) - 1) * 0.99)
+            depth_min = values[low_index]
+            depth_max = values[high_index]
+            if depth_max <= depth_min + 1e-6:
+                depth_max = depth_min + 1.0
+
+        denom = depth_max - depth_min
+        out_pixels = []
+        for i in range(0, len(pixels), 4):
+            depth = float(pixels[i])
+            if not math.isfinite(depth) or depth <= 0.0:
+                t = 1.0
+            else:
+                t = (depth - depth_min) / denom
+            color = depth_preview_color(t)
+            out_pixels.extend((color[0], color[1], color[2], 1.0))
+
+        png_path.parent.mkdir(parents=True, exist_ok=True)
+        preview = bpy.data.images.new(f"{exr_path.stem}_preview", width=width, height=height, alpha=True, float_buffer=False)
+        try:
+            preview.pixels.foreach_set(out_pixels)
+            preview.filepath_raw = str(png_path)
+            preview.file_format = "PNG"
+            preview.save()
+        finally:
+            bpy.data.images.remove(preview)
+        return {"min_meters": float(depth_min), "max_meters": float(depth_max), "percentiles": [1.0, 99.0]}
+    finally:
+        bpy.data.images.remove(image)
+
+
+def render_pbr_pass_maps(scene_dir: Path, config: dict) -> dict:
+    scene = bpy.context.scene
+    view_layer = scene.view_layers[0]
+    old_use_nodes = scene.use_nodes
+    old_tree_nodes = None
+    old_tree_links = None
+    if scene.node_tree:
+        old_tree_nodes = list(scene.node_tree.nodes)
+        old_tree_links = list(scene.node_tree.links)
+
+    view_layer.use_pass_z = True
+    view_layer.use_pass_normal = True
+    view_layer.use_pass_diffuse_color = True
+
+    scene.use_nodes = True
+    tree = scene.node_tree
+    tree.nodes.clear()
+    render_layers = tree.nodes.new("CompositorNodeRLayers")
+
+    tmp_dir = scene_dir / "pbr" / "_tmp"
+    if tmp_dir.exists():
+        shutil.rmtree(tmp_dir)
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    depth_out = add_file_output_node(tree, "TL_PBR_Depth", tmp_dir, "depth", color_mode="RGB")
+    normal_out = add_file_output_node(tree, "TL_PBR_Normal", tmp_dir, "normal", color_mode="RGB")
+    albedo_out = add_file_output_node(tree, "TL_PBR_Albedo", tmp_dir, "albedo", color_mode="RGB")
+
+    depth_socket = first_existing_socket(render_layers.outputs, ["Depth", "Z"])
+    normal_socket = first_existing_socket(render_layers.outputs, ["Normal"])
+    albedo_socket = first_existing_socket(render_layers.outputs, ["DiffCol", "Diffuse Color", "Albedo"])
+    if not all([depth_socket, normal_socket, albedo_socket]):
+        raise RuntimeError("Required render pass sockets are not available for PBR map rendering.")
+
+    raw_depth_rgb = tree.nodes.new("CompositorNodeCombRGBA")
+    for channel in ("R", "G", "B"):
+        tree.links.new(depth_socket, raw_depth_rgb.inputs[channel])
+    raw_depth_rgb.inputs["A"].default_value = 1.0
+
+    tree.links.new(raw_depth_rgb.outputs["Image"], depth_out.inputs[0])
+    tree.links.new(normal_socket, normal_out.inputs[0])
+    tree.links.new(albedo_socket, albedo_out.inputs[0])
+
+    old_filepath = scene.render.filepath
+    try:
+        bpy.ops.render.render(write_still=False)
+        outputs = {
+            "depth": "pbr/depth.exr",
+            "normal": "pbr/normal.exr",
+            "albedo": "pbr/albedo.exr",
+        }
+        for key, rel_path in outputs.items():
+            move_compositor_output(tmp_dir, key, scene_dir / rel_path)
+        outputs["depth_png"] = "pbr/depth.png"
+        outputs["depth_png_range"] = render_depth_preview_png(scene_dir / outputs["depth"], scene_dir / outputs["depth_png"])
+    finally:
+        scene.render.filepath = old_filepath
+        tree.nodes.clear()
+        if old_tree_nodes is not None:
+            # The old compositor setup is not used by this script, so restore only the use_nodes state.
+            pass
+        scene.use_nodes = old_use_nodes
+        if tmp_dir.exists():
+            shutil.rmtree(tmp_dir)
+    return outputs
+
+
+def render_pbr_maps(scene_dir: Path, config: dict) -> dict:
+    outputs = render_pbr_pass_maps(scene_dir, config)
+    outputs["roughness"] = render_material_property_map(scene_dir, "pbr/roughness.exr", "Roughness", 0.75)
+    return outputs
+
+
 def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[float]]:
     spatial = config["spatial"]
     count = int(spatial.get("positions_per_scene", 64))
@@ -967,6 +1200,7 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     light_position_preview = None
     if config.get("_light_preview", False):
         light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, center)
+    pbr_maps = render_pbr_maps(scene_dir, config) if config.get("_render_pbr", False) else None
 
     set_black_world()
     lights_meta = []
@@ -1016,6 +1250,7 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "ambient_png": ambient_png,
         "light_position_preview": light_position_preview,
         "ambient_source": source,
+        "pbr_maps": pbr_maps,
         "light_volume_center": vec_to_list(center),
         "light_volume_center_source": "camera_look_at",
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
@@ -1346,6 +1581,7 @@ def main() -> int:
         config["render"]["samples"] = args.samples
     config["_debug_preview_only"] = bool(args.debug)
     config["_light_preview"] = bool(args.light_preview or args.debug_light_preview or args.debug)
+    config["_render_pbr"] = bool(args.pbr)
 
     object_manifest = resolve_path(root, config.get("object_manifest"))
     hdri_manifest = resolve_path(root, config.get("hdri_manifest"))
