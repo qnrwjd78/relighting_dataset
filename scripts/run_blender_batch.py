@@ -14,6 +14,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--blender-exe", default=os.environ.get("BLENDER_EXE", "blender"))
     parser.add_argument("--max-scenes", type=int, default=None)
     parser.add_argument("--resolution", type=int, default=None)
+    parser.add_argument("--width", type=int, default=None)
+    parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
@@ -50,6 +52,10 @@ def main() -> int:
         cmd += ["--max-scenes", str(args.max_scenes)]
     if args.resolution is not None:
         cmd += ["--resolution", str(args.resolution)]
+    if args.width is not None:
+        cmd += ["--width", str(args.width)]
+    if args.height is not None:
+        cmd += ["--height", str(args.height)]
     if args.samples is not None:
         cmd += ["--samples", str(args.samples)]
 

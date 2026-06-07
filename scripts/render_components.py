@@ -27,6 +27,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-scenes", type=int, default=None)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--resolution", type=int, default=None)
+    parser.add_argument("--width", type=int, default=None)
+    parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
@@ -133,9 +135,14 @@ def setup_render_settings(config: dict) -> None:
                     except Exception:
                         continue
 
-    resolution = int(render_cfg.get("resolution", 960))
-    scene.render.resolution_x = resolution
-    scene.render.resolution_y = resolution
+    resolution = render_cfg.get("resolution", 960)
+    if isinstance(resolution, (list, tuple)):
+        resolution_x, resolution_y = int(resolution[0]), int(resolution[1])
+    else:
+        resolution_x = int(render_cfg.get("resolution_x", resolution))
+        resolution_y = int(render_cfg.get("resolution_y", resolution))
+    scene.render.resolution_x = resolution_x
+    scene.render.resolution_y = resolution_y
     scene.render.resolution_percentage = 100
 
     scene.view_settings.view_transform = render_cfg.get("view_transform", "Standard")
@@ -894,6 +901,12 @@ def main() -> int:
     config = load_json(config_path.resolve())
     if args.resolution is not None:
         config["render"]["resolution"] = args.resolution
+        config["render"].pop("resolution_x", None)
+        config["render"].pop("resolution_y", None)
+    if args.width is not None:
+        config["render"]["resolution_x"] = args.width
+    if args.height is not None:
+        config["render"]["resolution_y"] = args.height
     if args.samples is not None:
         config["render"]["samples"] = args.samples
 
