@@ -4,9 +4,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Asia/Seoul
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility,graphics
-ENV HF_HOME=/workspace/.cache/huggingface
+ENV WORKSPACE=/workspace
+ENV HF_HOME=${WORKSPACE}/.cache/huggingface
 ENV HF_HUB_ENABLE_HF_TRANSFER=1
 ENV PIP_NO_CACHE_DIR=1
+ENV PYTHONPATH=${WORKSPACE}
 
 ARG BLENDER_VERSION=4.4.3
 ARG BLENDER_MAJOR=4.4
@@ -60,7 +62,7 @@ RUN mkdir -p /opt/blender && \
     ln -s "/opt/blender/blender-${BLENDER_VERSION}/blender" /usr/local/bin/blender44 && \
     rm -f "/tmp/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
 
-WORKDIR /workspace
+WORKDIR ${WORKSPACE}
 
 COPY requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --upgrade pip setuptools wheel && \

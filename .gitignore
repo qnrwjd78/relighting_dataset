@@ -12,3 +12,6 @@ assets/**
 !assets/
 !assets/**/
 !assets/**/.gitkeep
+tokenlight_synthetic_1280_done.tar.gz
+logs/
+.cache/
