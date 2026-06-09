@@ -6,6 +6,9 @@ import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+import tarfile
+import zipfile
+
 import numpy as np
 from tqdm import tqdm
 
@@ -38,6 +41,22 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--overwrite", action="store_true", help="Overwrite output root if it exists.")
     parser.add_argument("--gamma", type=float, default=2.2, help="Gamma after Reinhard tone mapping.")
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="Create archive after export.",
+    )
+    parser.add_argument(
+        "--archive-format",
+        choices=["tar.gz", "zip"],
+        default="tar.gz",
+        help="Archive format. Default: tar.gz.",
+    )
+    parser.add_argument(
+        "--archive-output",
+        default=None,
+        help="Archive output path. Defaults to OUTPUT.tar.gz or OUTPUT.zip.",
+    )
     parser.add_argument(
         "--light-limit",
         type=int,
@@ -237,6 +256,60 @@ def update_and_copy_meta(
     with meta_dst.open("w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
 
+def archive_output_dir(
+    output_root: Path,
+    archive_format: str,
+    archive_output: str | None,
+) -> Path:
+    if archive_output is not None:
+        archive_path = Path(archive_output).resolve()
+    else:
+        if archive_format == "tar.gz":
+            archive_path = output_root.with_suffix(output_root.suffix + ".tar.gz")
+        elif archive_format == "zip":
+            archive_path = output_root.with_suffix(output_root.suffix + ".zip")
+        else:
+            raise ValueError(f"Unsupported archive format: {archive_format}")
+
+    if archive_path.exists():
+        archive_path.unlink()
+
+    print(f"[MinimalPNG] Archiving {output_root} -> {archive_path}", flush=True)
+
+    files = [p for p in output_root.rglob("*") if p.is_file()]
+
+    if archive_format == "tar.gz":
+        with tarfile.open(archive_path, "w:gz") as tar:
+            for file_path in tqdm(
+                files,
+                desc="Archiving",
+                unit="file",
+                dynamic_ncols=True,
+            ):
+                arcname = file_path.relative_to(output_root.parent)
+                tar.add(file_path, arcname=arcname)
+
+    elif archive_format == "zip":
+        with zipfile.ZipFile(
+            archive_path,
+            mode="w",
+            compression=zipfile.ZIP_DEFLATED,
+            compresslevel=6,
+        ) as zf:
+            for file_path in tqdm(
+                files,
+                desc="Archiving",
+                unit="file",
+                dynamic_ncols=True,
+            ):
+                arcname = file_path.relative_to(output_root.parent)
+                zf.write(file_path, arcname=arcname)
+
+    else:
+        raise ValueError(f"Unsupported archive format: {archive_format}")
+
+    print(f"[MinimalPNG] Archive written: {archive_path}", flush=True)
+    return archive_path
 
 def process_scene(
     scene_dir: Path,
@@ -370,6 +443,14 @@ def main() -> int:
                 tqdm.write(f"[MinimalPNG] {scene_name}: selected={num_lights}, written={written}")
 
     print(f"[MinimalPNG] Done. Wrote {total_written} point-light PNGs under {output_root}", flush=True)
+
+    if args.archive:
+        archive_output_dir(
+            output_root=output_root,
+            archive_format=args.archive_format,
+            archive_output=args.archive_output,
+        )
+
     return 0
 
 
