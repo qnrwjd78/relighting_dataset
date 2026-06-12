@@ -239,7 +239,13 @@ def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: rando
     if asset_path:
         path = Path(asset_path)
         ext = path.suffix.lower()
-        if ext in (".glb", ".gltf"):
+        if ext == ".blend":
+            with bpy.data.libraries.load(str(path), link=False) as (data_from, data_to):
+                data_to.objects = list(data_from.objects)
+            for obj in data_to.objects:
+                if obj is not None:
+                    bpy.context.collection.objects.link(obj)
+        elif ext in (".glb", ".gltf"):
             bpy.ops.import_scene.gltf(filepath=str(path))
         elif ext == ".obj":
             if hasattr(bpy.ops.import_scene, "obj"):
