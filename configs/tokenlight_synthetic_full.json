@@ -1,7 +1,7 @@
 {
   "output_root": "outputs/tokenlight_synthetic_1280",
-  "object_manifest": "manifests/objects.txt",
-  "hdri_manifest": "manifests/hdris.txt",
+  "object_manifest": "outputs/previews/objaverse_xl/objaverse_xl_objects.txt",
+  "hdri_manifest": "outputs/previews/polyhaven_hdri/polyhaven_hdri_hdris.txt",
   "fixture_scene_manifest": "manifests/fixture_scenes.jsonl",
   "scene_count": 5000,
   "seed": 20260524,
@@ -12,6 +12,8 @@
     "denoise": true,
     "tile_size": 256,
     "exr_color_depth": "16",
+    "component_format": "exr",
+    "component_png_gamma": 2.2,
     "view_transform": "Standard",
     "look": "None",
     "exposure": 0.0,
@@ -51,6 +53,8 @@
   "ambient": {
     "hdri_strength_range": [0.8, 1.2],
     "hdri_rotation_random": true,
+    "hdri_mode": "on",
+    "hdri_probability": 1.0,
     "fallback_color": [0.78, 0.78, 0.78],
     "fallback_strength": 0.8
   },

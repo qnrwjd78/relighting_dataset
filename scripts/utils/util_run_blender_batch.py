@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the TokenLight Blender component renderer.")
+    parser = argparse.ArgumentParser(description="Run the Blender object relighting renderer.")
     parser.add_argument("--config", default="configs/tokenlight_synthetic_full.json")
     parser.add_argument("--blender-exe", default=os.environ.get("BLENDER_EXE", "blender"))
     parser.add_argument("--max-scenes", type=int, default=None)
@@ -17,6 +17,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--samples", type=int, default=None)
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--component-format", choices=["exr", "png", "both"], default=None)
+    parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default=None)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     parser.add_argument("--background", action="store_true", help="Pass -b to Blender. Enabled by default.")
@@ -26,7 +29,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     config = Path(args.config)
     if not config.is_absolute():
         config = root / config
@@ -39,7 +42,7 @@ def main() -> int:
         cmd.append("-b")
     cmd += [
         "--python",
-        str(root / "scripts" / "render_components.py"),
+        str(root / "scripts" / "render_object_relighting.py"),
         "--",
         "--config",
         str(config),
@@ -58,6 +61,12 @@ def main() -> int:
         cmd += ["--height", str(args.height)]
     if args.samples is not None:
         cmd += ["--samples", str(args.samples)]
+    if args.output is not None:
+        cmd += ["--output", args.output]
+    if args.component_format is not None:
+        cmd += ["--component-format", args.component_format]
+    if args.hdri_mode is not None:
+        cmd += ["--hdri-mode", args.hdri_mode]
 
     print("Running:", " ".join(cmd), flush=True)
     try:

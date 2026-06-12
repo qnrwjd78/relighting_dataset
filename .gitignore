@@ -5,6 +5,8 @@ __pycache__/
 .ruff_cache/
 data/
 outputs/
+external/
+dataset/previews/
 manifests/objects.txt
 manifests/hdris.txt
 manifests/fixture_scenes.jsonl
@@ -15,4 +17,5 @@ assets/**
 tokenlight_synthetic_1280_done.tar.gz
 logs/
 .cache/
-download/previews/
+download/
+donwload/

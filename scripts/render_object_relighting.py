@@ -7,15 +7,21 @@ import os
 import random
 import shutil
 import sys
+from array import array
 from pathlib import Path
 from typing import Iterable
+
+DATASET_UTILS = Path(__file__).resolve().parents[1] / "dataset"
+if str(DATASET_UTILS) not in sys.path:
+    sys.path.insert(0, str(DATASET_UTILS))
+from utils.util_progress import progress_bar, progress_write
 
 try:
     import bpy
     from bpy_extras.object_utils import world_to_camera_view
     from mathutils import Matrix, Vector
 except ModuleNotFoundError as exc:  # pragma: no cover - must run inside Blender
-    raise SystemExit("scripts/render_components.py must be run by Blender Python.") from exc
+    raise SystemExit("scripts/render_object_relighting.py must be run by Blender Python.") from exc
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,7 +30,7 @@ def parse_args() -> argparse.Namespace:
         argv = argv[argv.index("--") + 1 :]
     else:
         argv = []
-    parser = argparse.ArgumentParser(description="Render TokenLight-style linear EXR components.")
+    parser = argparse.ArgumentParser(description="Render object/portrait relighting components.")
     parser.add_argument("--config", required=True)
     parser.add_argument("--max-scenes", type=int, default=None)
     parser.add_argument("--start-index", type=int, default=0)
@@ -32,10 +38,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=None)
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--samples", type=int, default=None)
+    parser.add_argument("--output", default=None)
     parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip component EXR/mask renders.")
     parser.add_argument("--light-preview", action="store_true", help="Render a PNG showing the sampled spatial light positions.")
     parser.add_argument("--debug-light-preview", action="store_true", help="Deprecated alias for --light-preview.")
     parser.add_argument("--pbr", action="store_true", help="Render extra PBR maps: depth, normal, albedo, roughness.")
+    parser.add_argument("--component-format", choices=["exr", "png", "both"], default=None)
+    parser.add_argument("--output-format", choices=["exr", "png", "both"], dest="component_format")
+    parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default=None)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
 
@@ -159,6 +169,7 @@ def setup_render_settings(config: dict) -> None:
     scene.render.image_settings.file_format = "OPEN_EXR"
     scene.render.image_settings.color_mode = "RGB"
     scene.render.image_settings.color_depth = str(render_cfg.get("exr_color_depth", "16"))
+    scene["tl_exr_color_depth"] = str(render_cfg.get("exr_color_depth", "16"))
 
 
 def make_principled_mat(
@@ -709,6 +720,20 @@ def set_hdri_world(hdri_path: str | None, strength: float, rotation_z: float, fa
     return source
 
 
+def choose_hdri_path(config: dict, rng: random.Random, explicit_path: str | None = None) -> tuple[str | None, str]:
+    mode = str(config.get("_hdri_mode", config.get("ambient", {}).get("hdri_mode", "on"))).lower()
+    if mode == "off":
+        return None, "off"
+    if mode == "random":
+        probability = float(config.get("ambient", {}).get("hdri_probability", 0.5))
+        if rng.random() > probability:
+            return None, "random_off"
+    if explicit_path:
+        return explicit_path, mode
+    hdris = config.get("_runtime", {}).get("hdris", [])
+    return (rng.choice(hdris) if hdris else None), mode
+
+
 def set_black_world() -> None:
     set_constant_world((0.0, 0.0, 0.0), 0.0)
 
@@ -762,6 +787,7 @@ def render_exr(path: Path) -> None:
     scene.render.filepath = str(path)
     scene.render.image_settings.file_format = "OPEN_EXR"
     scene.render.image_settings.color_mode = "RGB"
+    scene.render.image_settings.color_depth = str(scene.get("tl_exr_color_depth", "16"))
     bpy.ops.render.render(write_still=True)
 
 
@@ -775,6 +801,101 @@ def render_png(path: Path) -> None:
     bpy.ops.render.render(write_still=True)
     scene.render.image_settings.file_format = "OPEN_EXR"
     scene.render.image_settings.color_mode = "RGB"
+
+
+def component_formats(config: dict) -> set[str]:
+    fmt = str(config.get("_component_format", config.get("render", {}).get("component_format", "exr"))).lower()
+    if fmt == "both":
+        return {"exr", "png"}
+    return {fmt}
+
+
+def primary_component_format(config: dict) -> str:
+    fmt = str(config.get("_component_format", config.get("render", {}).get("component_format", "exr"))).lower()
+    return "png" if fmt == "png" else "exr"
+
+
+def tonemap_exr_to_png(exr_path: Path, png_path: Path, gamma: float = 2.2) -> None:
+    png_path.parent.mkdir(parents=True, exist_ok=True)
+    src = bpy.data.images.load(str(exr_path), check_existing=False)
+    dst = None
+    try:
+        width, height = int(src.size[0]), int(src.size[1])
+        channels = int(src.channels)
+        src_pixels = array("f", [0.0]) * (width * height * channels)
+        src.pixels.foreach_get(src_pixels)
+
+        inv_gamma = 1.0 / gamma if gamma > 0.0 else 1.0
+        dst_pixels = array("f", [0.0]) * (width * height * 4)
+        for pixel_index in range(width * height):
+            src_offset = pixel_index * channels
+            dst_offset = pixel_index * 4
+            for channel in range(3):
+                value = src_pixels[src_offset + channel] if channel < channels else 0.0
+                value = max(float(value), 0.0)
+                value = value / (1.0 + value)
+                if gamma > 0.0:
+                    value = value ** inv_gamma
+                dst_pixels[dst_offset + channel] = min(max(value, 0.0), 1.0)
+            dst_pixels[dst_offset + 3] = 1.0
+
+        dst = bpy.data.images.new(f"TL_tonemap_{png_path.stem}", width=width, height=height, alpha=True, float_buffer=False)
+        dst.pixels.foreach_set(dst_pixels)
+        dst.filepath_raw = str(png_path)
+        dst.file_format = "PNG"
+        dst.save()
+    finally:
+        if dst is not None:
+            bpy.data.images.remove(dst)
+        bpy.data.images.remove(src)
+
+
+def render_component(scene_dir: Path, rel_base: str, config: dict) -> dict:
+    formats = component_formats(config)
+    primary = primary_component_format(config)
+    exr_rel = f"{rel_base}.exr"
+    png_rel = f"{rel_base}.png"
+    exr_path = scene_dir / exr_rel
+    png_path = scene_dir / png_rel
+
+    temp_exr = exr_path
+    remove_temp = False
+    if "exr" not in formats:
+        temp_exr = exr_path.with_name(f".{exr_path.stem}.tmp.exr")
+        remove_temp = True
+
+    render_exr(temp_exr)
+    result = {"primary": png_rel if primary == "png" else exr_rel}
+    if "png" in formats:
+        tonemap_exr_to_png(temp_exr, png_path, float(config.get("render", {}).get("component_png_gamma", 2.2)))
+        result["png"] = png_rel
+    if "exr" in formats:
+        result["exr"] = exr_rel
+    if remove_temp:
+        temp_exr.unlink(missing_ok=True)
+    return result
+
+
+def copy_component(scene_dir: Path, src_base: str, dst_base: str, config: dict) -> dict:
+    formats = component_formats(config)
+    primary = primary_component_format(config)
+    result = {"primary": f"{dst_base}.png" if primary == "png" else f"{dst_base}.exr"}
+    for fmt in formats:
+        src = scene_dir / f"{src_base}.{fmt}"
+        dst = scene_dir / f"{dst_base}.{fmt}"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(src, dst)
+        result[fmt] = f"{dst_base}.{fmt}"
+    return result
+
+
+def component_meta(output: dict) -> dict:
+    meta = {"render": output["primary"]}
+    if "exr" in output:
+        meta["render_exr"] = output["exr"]
+    if "png" in output:
+        meta["render_png"] = output["png"]
+    return meta
 
 
 def first_existing_socket(outputs, names: list[str]):
@@ -1192,14 +1313,14 @@ def render_object_mask(scene_dir: Path, subject_objects: list[bpy.types.Object])
 
 def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> dict:
     ambient = config["ambient"]
-    hdris = config["_runtime"]["hdris"]
-    hdri_path = rng.choice(hdris) if hdris else None
+    hdri_path, hdri_mode = choose_hdri_path(config, rng)
     hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
     hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
     source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
+    source["hdri_mode"] = hdri_mode
     remove_all_lights()
-    ambient_render = "spatial/ambient.exr"
-    render_exr(scene_dir / ambient_render)
+    ambient_output = render_component(scene_dir, "spatial/ambient", config)
+    ambient_render = ambient_output["primary"]
     ambient_png = f"../preview/{scene_dir.name}_ambient.png"
     render_png(scene_dir / ambient_png)
     positions = sample_spatial_positions(config, rng)
@@ -1214,31 +1335,31 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     radius = float(spatial.get("fixed_radius", 0.06))
     receiver_bounds = config["_runtime"].get("receiver_bounds")
     invalid_black_source: str | None = None
-    for light_index, p_can in enumerate(positions):
-        p_world = canonical_to_world(p_can, camera, config, center)
-        rel_path = f"spatial/point_lights/light_{light_index:03d}.exr"
-        valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, radius)
-        copied_from = None
-        if valid:
-            light = create_point_light(
-                f"TL_Point_{light_index:03d}",
-                p_world,
-                float(spatial.get("base_energy", 500.0)),
-                radius,
-                spatial.get("color", [1.0, 1.0, 1.0]),
-            )
-            render_exr(scene_dir / rel_path)
-            bpy.data.objects.remove(light, do_unlink=True)
-        else:
-            if invalid_black_source is None:
-                render_exr(scene_dir / rel_path)
-                invalid_black_source = rel_path
+    with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
+        for light_index, p_can in enumerate(pbar):
+            pbar.set_postfix(light=f"{light_index:03d}")
+            p_world = canonical_to_world(p_can, camera, config, center)
+            rel_base = f"spatial/point_lights/light_{light_index:03d}"
+            valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, radius)
+            copied_from = None
+            if valid:
+                light = create_point_light(
+                    f"TL_Point_{light_index:03d}",
+                    p_world,
+                    float(spatial.get("base_energy", 500.0)),
+                    radius,
+                    spatial.get("color", [1.0, 1.0, 1.0]),
+                )
+                light_output = render_component(scene_dir, rel_base, config)
+                bpy.data.objects.remove(light, do_unlink=True)
             else:
-                (scene_dir / rel_path).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(scene_dir / invalid_black_source, scene_dir / rel_path)
-                copied_from = invalid_black_source
-        lights_meta.append(
-            {
+                if invalid_black_source is None:
+                    light_output = render_component(scene_dir, rel_base, config)
+                    invalid_black_source = rel_base
+                else:
+                    light_output = copy_component(scene_dir, invalid_black_source, rel_base, config)
+                    copied_from = light_output["primary"].replace(f"light_{light_index:03d}", Path(invalid_black_source).name)
+            light_meta = {
                 "id": light_index,
                 "canonical_position": p_can,
                 "world_position": vec_to_list(p_world),
@@ -1248,11 +1369,12 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
                 "energy": float(spatial.get("base_energy", 500.0)),
                 "canonical_radius": radius,
                 "world_radius": radius,
-                "render": rel_path,
             }
-        )
+            light_meta.update(component_meta(light_output))
+            lights_meta.append(light_meta)
     return {
         "ambient_render": ambient_render,
+        "ambient_output": component_meta(ambient_output),
         "ambient_png": ambient_png,
         "light_position_preview": light_position_preview,
         "ambient_source": source,
@@ -1274,8 +1396,8 @@ def render_diffuse_components(scene_dir: Path, config: dict, rng: random.Random,
     strength = float(diffuse.get("constant_ambient_strength", 0.35))
     set_constant_world(color, strength)
     remove_all_lights()
-    ambient_render = "diffuse/ambient_constant.exr"
-    render_exr(scene_dir / ambient_render)
+    ambient_output = render_component(scene_dir, "diffuse/ambient_constant", config)
+    ambient_render = ambient_output["primary"]
 
     set_black_world()
     p_can = diffuse.get("area_light_canonical_position", [-0.45, -0.65, 1.15])
@@ -1285,34 +1407,35 @@ def render_diffuse_components(scene_dir: Path, config: dict, rng: random.Random,
     norm_min, norm_max = diffuse.get("normalize_spread_to", [-1.0, 1.0])
     spread_values = sorted(rng.uniform(float(spread_min), float(spread_max)) for _ in range(spread_count))
     spreads = []
-    for i, spread_deg in enumerate(spread_values):
-        t = 0.0 if float(spread_max) == float(spread_min) else (spread_deg - float(spread_min)) / (float(spread_max) - float(spread_min))
-        distance = max((p_world - center).length, 0.1)
-        area_size = 2.0 * distance * math.tan(math.radians(spread_deg) * 0.5)
-        light = create_area_light(
-            f"TL_Diffuse_Area_{i:03d}",
-            p_world,
-            center,
-            float(diffuse.get("area_light_energy", 650.0)),
-            area_size,
-        )
-        rel_path = f"diffuse/spread_{i:03d}.exr"
-        render_exr(scene_dir / rel_path)
-        bpy.data.objects.remove(light, do_unlink=True)
-        normalized = norm_min + t * (norm_max - norm_min)
-        spreads.append(
-            {
+    with progress_bar(spread_values, total=len(spread_values), desc=f"{scene_dir.name} diffuse", unit="spread") as pbar:
+        for i, spread_deg in enumerate(pbar):
+            pbar.set_postfix(spread=f"{i:03d}")
+            t = 0.0 if float(spread_max) == float(spread_min) else (spread_deg - float(spread_min)) / (float(spread_max) - float(spread_min))
+            distance = max((p_world - center).length, 0.1)
+            area_size = 2.0 * distance * math.tan(math.radians(spread_deg) * 0.5)
+            light = create_area_light(
+                f"TL_Diffuse_Area_{i:03d}",
+                p_world,
+                center,
+                float(diffuse.get("area_light_energy", 650.0)),
+                area_size,
+            )
+            light_output = render_component(scene_dir, f"diffuse/spread_{i:03d}", config)
+            bpy.data.objects.remove(light, do_unlink=True)
+            normalized = norm_min + t * (norm_max - norm_min)
+            spread_meta = {
                 "id": i,
                 "spread_degrees": spread_deg,
                 "normalized_spread": normalized,
                 "area_size": area_size,
                 "canonical_position": p_can,
                 "world_position": vec_to_list(p_world),
-                "render": rel_path,
             }
-        )
+            spread_meta.update(component_meta(light_output))
+            spreads.append(spread_meta)
     return {
         "ambient_render": ambient_render,
+        "ambient_output": component_meta(ambient_output),
         "ambient_source": {
             "type": "constant",
             "color": list(color),
@@ -1349,11 +1472,11 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
 
     if config.get("_debug_preview_only", False):
         ambient = config["ambient"]
-        hdris = config["_runtime"]["hdris"]
-        hdri_path = rng.choice(hdris) if hdris else None
+        hdri_path, hdri_mode = choose_hdri_path(config, rng)
         hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
         hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
         source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
+        source["hdri_mode"] = hdri_mode
         remove_all_lights()
         light_position_preview = None
         if config.get("_light_preview", False):
@@ -1497,6 +1620,7 @@ def render_fixture_scene(row: dict, scene_index: int, config: dict, root: Path) 
     blend_path = resolve_path(root, row["blend_path"])
     bpy.ops.wm.open_mainfile(filepath=str(blend_path))
     setup_render_settings(config)
+    rng = random.Random(int(config["seed"]) + scene_index)
     output_root = resolve_path(root, config["output_root"]) or (root / "outputs/tokenlight_synthetic")
     scene_id = row.get("scene_id") or f"fixture_{scene_index:06d}"
     scene_dir = output_root / "scenes" / scene_id
@@ -1506,7 +1630,7 @@ def render_fixture_scene(row: dict, scene_index: int, config: dict, root: Path) 
         bpy.context.scene.camera = bpy.data.objects[row["camera"]]
 
     ambient = config["ambient"]
-    hdri_path = row.get("hdri_path")
+    hdri_path, hdri_mode = choose_hdri_path(config, rng, row.get("hdri_path"))
     set_hdri_world(
         hdri_path,
         float(row.get("hdri_strength", ambient.get("fallback_strength", 0.8))),
@@ -1519,25 +1643,24 @@ def render_fixture_scene(row: dict, scene_index: int, config: dict, root: Path) 
     off_material = make_principled_mat("TL_fixture_off_material", (0.02, 0.02, 0.02), roughness=0.85, metallic=0.0)
     apply_fixture_states(fixtures, None, original_materials, off_material)
 
-    environment_render = "fixtures/environment.exr"
-    render_exr(scene_dir / environment_render)
+    environment_output = render_component(scene_dir, "fixtures/environment", config)
+    environment_render = environment_output["primary"]
 
     fixtures_meta = []
     for fixture in fixtures:
         apply_fixture_states(fixtures, fixture["id"], original_materials, off_material)
         set_black_world()
-        rel = f"fixtures/fixture_{fixture['id']}/contribution.exr"
-        render_exr(scene_dir / rel)
+        contribution_output = render_component(scene_dir, f"fixtures/fixture_{fixture['id']}/contribution", config)
         mask = render_fixture_mask(scene_dir, fixture)
-        fixtures_meta.append(
-            {
-                "id": fixture["id"],
-                "prefixes": fixture.get("prefixes", []),
-                "light_prefixes": fixture.get("light_prefixes", []),
-                "contribution_render": rel,
-                "mask_render": mask,
-            }
-        )
+        fixture_meta = {
+            "id": fixture["id"],
+            "prefixes": fixture.get("prefixes", []),
+            "light_prefixes": fixture.get("light_prefixes", []),
+            "mask_render": mask,
+        }
+        fixture_meta["contribution_render"] = contribution_output["primary"]
+        fixture_meta["contribution_output"] = component_meta(contribution_output)
+        fixtures_meta.append(fixture_meta)
 
     meta = {
         "schema": "tokenlight_synthetic_components_v1",
@@ -1556,6 +1679,8 @@ def render_fixture_scene(row: dict, scene_index: int, config: dict, root: Path) 
         },
         "fixtures": {
             "environment_render": environment_render,
+            "environment_output": component_meta(environment_output),
+            "hdri_mode": hdri_mode,
             "max_non_selected_fixtures_in_ambient": int(config["fixtures"].get("max_non_selected_fixtures_in_ambient", 5)),
             "fixtures": fixtures_meta,
         },
@@ -1585,6 +1710,12 @@ def main() -> int:
         config["render"]["resolution_y"] = args.height
     if args.samples is not None:
         config["render"]["samples"] = args.samples
+    if args.output is not None:
+        config["output_root"] = args.output
+    if args.component_format is not None:
+        config["render"]["component_format"] = args.component_format
+    config["_component_format"] = str(config["render"].get("component_format", "exr")).lower()
+    config["_hdri_mode"] = args.hdri_mode or str(config.get("ambient", {}).get("hdri_mode", "on")).lower()
     config["_debug_preview_only"] = bool(args.debug)
     config["_light_preview"] = bool(args.light_preview or args.debug_light_preview or args.debug)
     config["_render_pbr"] = bool(args.pbr)
@@ -1605,18 +1736,24 @@ def main() -> int:
     output_root = resolve_path(root, config["output_root"]) or (root / "outputs/tokenlight_synthetic")
     metas = []
     if args.only in ("all", "spatial", "diffuse"):
-        for i in range(args.start_index, args.start_index + scene_count):
-            print(f"[TokenLight] Rendering object-centric scene {i}", flush=True)
-            metas.append(render_object_scene(i, config, root, args.only))
+        scene_indices = range(args.start_index, args.start_index + scene_count)
+        with progress_bar(scene_indices, total=scene_count, desc="Object scenes", unit="scene") as pbar:
+            for i in pbar:
+                pbar.set_postfix(scene=f"{i:06d}")
+                progress_write(f"[Relighting] Rendering object scene {i}")
+                metas.append(render_object_scene(i, config, root, args.only))
 
     if not args.debug and args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
         fixture_rows = config["_runtime"]["fixture_scenes"]
         if fixture_rows and config["fixtures"].get("render_if_manifest_exists", True):
-            for j, row in enumerate(fixture_rows):
-                print(f"[TokenLight] Rendering fixture scene {row.get('scene_id', j)}", flush=True)
-                metas.append(render_fixture_scene(row, j, config, root))
+            with progress_bar(fixture_rows, total=len(fixture_rows), desc="Fixture scenes", unit="scene") as pbar:
+                for j, row in enumerate(pbar):
+                    scene_name = row.get("scene_id", j)
+                    pbar.set_postfix(scene=str(scene_name))
+                    progress_write(f"[Relighting] Rendering fixture scene {scene_name}")
+                    metas.append(render_fixture_scene(row, j, config, root))
         else:
-            print("[TokenLight] No fixture scene manifest found; skipping visible-fixture synthetic renders.", flush=True)
+            progress_write("[Relighting] No fixture scene manifest found; skipping visible-fixture synthetic renders.")
 
     manifest = {
         "schema": "tokenlight_synthetic_dataset_manifest_v1",
@@ -1625,12 +1762,14 @@ def main() -> int:
             "diffuse_spread_count": config["diffuse"].get("spread_count", 6),
             "fov_degrees": config["camera"].get("fov_degrees", 39.6),
             "linear_rgb_components": True,
+            "component_format": config["_component_format"],
+            "hdri_mode": config["_hdri_mode"],
         },
         "scene_count_written": len(metas),
         "scenes": [{"scene_id": m["scene_id"], "scene_type": m["scene_type"], "meta": f"scenes/{m['scene_id']}/meta.json"} for m in metas],
     }
     write_json(output_root / "dataset_manifest.json", manifest)
-    print(f"[TokenLight] Wrote manifest: {output_root / 'dataset_manifest.json'}", flush=True)
+    progress_write(f"[Relighting] Wrote manifest: {output_root / 'dataset_manifest.json'}")
     return 0
 
 

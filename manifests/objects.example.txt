@@ -1,6 +1,0 @@
-# One asset path per line. Supported object-centric imports:
-# .glb .gltf .obj .fbx .stl .ply
-# Relative paths are resolved from the tokenlight_dataset folder.
-#
-# assets/objects/000001.glb
-# assets/objects/000002.glb

@@ -1,5 +1,0 @@
-# One PolyHaven HDRI path per line. Use .hdr or .exr.
-# Relative paths are resolved from the tokenlight_dataset folder.
-#
-data/hdri_map/test_001.hdr
-data/hdri_map/test_002.exr

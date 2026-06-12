@@ -11,6 +11,12 @@ from urllib.parse import urlparse
 
 import requests
 
+DATASET_ROOT = Path(__file__).resolve().parents[1]
+if str(DATASET_ROOT) not in sys.path:
+    sys.path.insert(0, str(DATASET_ROOT))
+
+from utils.util_progress import progress_bar, progress_write
+
 
 SUPPORTED_EXTS = {".blend", ".fbx", ".obj", ".glb", ".gltf", ".ply", ".stl"}
 
@@ -21,9 +27,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--zip-dir", default=None, help="Folder containing RenderPeople free zip files.")
     parser.add_argument("--urls-file", default=None, help="Text file with direct RenderPeople free zip URLs, one per line.")
-    parser.add_argument("--out-dir", default="assets/renderpeople_free", help="Extraction root.")
-    parser.add_argument("--manifest", default="manifests/renderpeople_free_objects.txt")
-    parser.add_argument("--metadata-out", default="manifests/renderpeople_free_meta.json")
+    parser.add_argument("--out-dir", default="data/renderpeople_free", help="Extraction root.")
+    parser.add_argument("--manifest", default="outputs/previews/renderpeople_free/renderpeople_free_objects.txt")
+    parser.add_argument("--metadata-out", default="outputs/previews/renderpeople_free/renderpeople_free_prepare_meta.json")
     parser.add_argument("--keep-zip", action="store_true", help="Keep URL-downloaded zip files under out-dir/zips.")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--timeout", type=float, default=60.0)
@@ -33,7 +39,7 @@ def parse_args() -> argparse.Namespace:
 
 def download_url(url: str, dst: Path, timeout: float, retries: int, overwrite: bool) -> None:
     if dst.exists() and not overwrite:
-        print(f"[RenderPeople] exists: {dst}", flush=True)
+        progress_write(f"[RenderPeople] exists: {dst}")
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp = dst.with_suffix(dst.suffix + ".part")
@@ -43,9 +49,12 @@ def download_url(url: str, dst: Path, timeout: float, retries: int, overwrite: b
             with requests.get(url, stream=True, timeout=timeout) as response:
                 response.raise_for_status()
                 with tmp.open("wb") as handle:
-                    for chunk in response.iter_content(chunk_size=1024 * 1024):
-                        if chunk:
-                            handle.write(chunk)
+                    total = int(response.headers.get("content-length") or 0) or None
+                    with progress_bar(total=total, desc=dst.name, unit="B", leave=False, unit_scale=True, unit_divisor=1024) as pbar:
+                        for chunk in response.iter_content(chunk_size=1024 * 1024):
+                            if chunk:
+                                handle.write(chunk)
+                                pbar.update(len(chunk))
             tmp.replace(dst)
             return
         except Exception as exc:
@@ -63,7 +72,7 @@ def safe_stem(value: str) -> str:
 
 def extract_zip(zip_path: Path, extract_dir: Path, overwrite: bool) -> None:
     if extract_dir.exists() and any(extract_dir.iterdir()) and not overwrite:
-        print(f"[RenderPeople] extracted exists: {extract_dir}", flush=True)
+        progress_write(f"[RenderPeople] extracted exists: {extract_dir}")
         return
     if extract_dir.exists() and overwrite:
         shutil.rmtree(extract_dir)
@@ -99,7 +108,7 @@ def main() -> int:
     args = parse_args()
     if not args.zip_dir and not args.urls_file:
         raise SystemExit("Pass --zip-dir for local zips or --urls-file for direct free zip URLs.")
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     out_dir = (repo_root / args.out_dir).resolve() if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
     manifest = (repo_root / args.manifest).resolve() if not Path(args.manifest).is_absolute() else Path(args.manifest)
     metadata_out = (repo_root / args.metadata_out).resolve() if not Path(args.metadata_out).is_absolute() else Path(args.metadata_out)
@@ -115,20 +124,22 @@ def main() -> int:
         urls = read_urls(Path(args.urls_file).resolve())
         for url in urls:
             zip_path = out_dir / "zips" / f"{safe_stem(url)}.zip"
-            print(f"[RenderPeople] download {url}", flush=True)
+            progress_write(f"[RenderPeople] download {url}")
             download_url(url, zip_path, args.timeout, args.retries, args.overwrite)
             zip_paths.append(zip_path)
 
     if not zip_paths:
         raise SystemExit("No zip files found.")
 
-    for zip_path in zip_paths:
-        extract_dir = out_dir / "extracted" / safe_stem(str(zip_path))
-        print(f"[RenderPeople] extract {zip_path}", flush=True)
-        extract_zip(zip_path, extract_dir, args.overwrite)
-        metadata.append({"zip_path": str(zip_path), "extract_dir": str(extract_dir)})
-        if args.urls_file and not args.keep_zip and str(zip_path).startswith(str(out_dir / "zips")):
-            zip_path.unlink(missing_ok=True)
+    with progress_bar(zip_paths, total=len(zip_paths), desc="RenderPeople extract", unit="zip") as pbar:
+        for zip_path in pbar:
+            pbar.set_postfix(file=zip_path.name[:32])
+            extract_dir = out_dir / "extracted" / safe_stem(str(zip_path))
+            progress_write(f"[RenderPeople] extract {zip_path}")
+            extract_zip(zip_path, extract_dir, args.overwrite)
+            metadata.append({"zip_path": str(zip_path), "extract_dir": str(extract_dir)})
+            if args.urls_file and not args.keep_zip and str(zip_path).startswith(str(out_dir / "zips")):
+                zip_path.unlink(missing_ok=True)
 
     assets = find_asset_files(out_dir / "extracted")
     manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -138,9 +149,9 @@ def main() -> int:
         json.dumps({"packages": metadata, "assets": [str(path) for path in assets]}, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    print(f"[RenderPeople] wrote manifest: {manifest}", flush=True)
-    print(f"[RenderPeople] wrote metadata: {metadata_out}", flush=True)
-    print(f"[RenderPeople] found assets: {len(assets)}", flush=True)
+    progress_write(f"[RenderPeople] wrote manifest: {manifest}")
+    progress_write(f"[RenderPeople] wrote metadata: {metadata_out}")
+    progress_write(f"[RenderPeople] found assets: {len(assets)}")
     return 0
 
 
