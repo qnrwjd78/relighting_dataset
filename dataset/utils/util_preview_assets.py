@@ -125,17 +125,42 @@ def mesh_bbox(objects: list[bpy.types.Object]) -> tuple[Vector, Vector]:
     return mins, maxs
 
 
-def normalize_for_preview(objects: list[bpy.types.Object], target_height: float = 2.0) -> tuple[Vector, Vector]:
+def root_objects(objects: list[bpy.types.Object]) -> list[bpy.types.Object]:
+    object_set = set(objects)
+    return [obj for obj in objects if obj.parent not in object_set]
+
+
+def transform_roots(objects: list[bpy.types.Object], transform: Matrix) -> None:
+    for obj in root_objects(objects):
+        obj.matrix_world = transform @ obj.matrix_world
+    bpy.context.view_layer.update()
+
+
+def upright_longest_axis(objects: list[bpy.types.Object]) -> None:
+    bbox_min, bbox_max = mesh_bbox(objects)
+    size = bbox_max - bbox_min
+    dims = [size.x, size.y, size.z]
+    longest_axis = max(range(3), key=lambda axis: dims[axis])
+    if longest_axis == 0:
+        transform_roots(objects, Matrix.Rotation(math.radians(-90.0), 4, "Y"))
+    elif longest_axis == 1:
+        transform_roots(objects, Matrix.Rotation(math.radians(90.0), 4, "X"))
+
+
+def normalize_for_preview(
+    objects: list[bpy.types.Object],
+    target_height: float = 2.0,
+    upright: bool = False,
+) -> tuple[Vector, Vector]:
+    if upright:
+        upright_longest_axis(objects)
     bbox_min, bbox_max = mesh_bbox(objects)
     size = bbox_max - bbox_min
     height = max(size.z, 1e-6)
     scale = target_height / height
     center_xy = Vector(((bbox_min.x + bbox_max.x) * 0.5, (bbox_min.y + bbox_max.y) * 0.5, 0.0))
     transform = Matrix.Scale(scale, 4) @ Matrix.Translation(Vector((-center_xy.x, -center_xy.y, -bbox_min.z)))
-    roots = [obj for obj in objects if obj.parent not in set(objects)]
-    for obj in roots:
-        obj.matrix_world = transform @ obj.matrix_world
-    bpy.context.view_layer.update()
+    transform_roots(objects, transform)
     return mesh_bbox(objects)
 
 
@@ -156,13 +181,20 @@ def setup_camera_and_lights(bbox_min: Vector, bbox_max: Vector, resolution: int)
     scene.view_settings.gamma = 1.0
 
     center = (bbox_min + bbox_max) * 0.5
-    height = max((bbox_max - bbox_min).z, 1e-6)
-    target = Vector((center.x, center.y, bbox_min.z + height * 0.58))
+    size = bbox_max - bbox_min
+    height = max(size.z, 1e-6)
+    span = max(size.x, size.y, size.z, 1.0)
+    target = Vector((center.x, center.y, bbox_min.z + height * 0.54))
     cam_data = bpy.data.cameras.new("PreviewCamera")
     cam = bpy.data.objects.new("PreviewCamera", cam_data)
     bpy.context.collection.objects.link(cam)
-    cam_data.lens = 65
-    cam.location = Vector((0.0, -3.2, bbox_min.z + height * 0.58))
+    cam_data.type = "ORTHO"
+    cam_data.ortho_scale = max(height, size.x, size.y) * 1.18
+    camera_distance = span * 3.0
+    if size.x >= size.y:
+        cam.location = Vector((center.x, bbox_min.y - camera_distance, target.z))
+    else:
+        cam.location = Vector((bbox_min.x - camera_distance, center.y, target.z))
     look_at(cam, target)
     scene.camera = cam
 
@@ -173,17 +205,17 @@ def setup_camera_and_lights(bbox_min: Vector, bbox_max: Vector, resolution: int)
     key_data = bpy.data.lights.new("PreviewKey", type="AREA")
     key = bpy.data.objects.new("PreviewKey", key_data)
     bpy.context.collection.objects.link(key)
-    key.location = (-1.2, -2.2, 2.8)
+    key.location = (target.x - span * 0.8, target.y - span * 1.2, target.z + span * 1.2)
     key_data.energy = 450
-    key_data.size = 4.0
+    key_data.size = max(span * 2.0, 2.0)
     look_at(key, target)
 
     fill_data = bpy.data.lights.new("PreviewFill", type="AREA")
     fill = bpy.data.objects.new("PreviewFill", fill_data)
     bpy.context.collection.objects.link(fill)
-    fill.location = (1.8, -1.6, 1.8)
+    fill.location = (target.x + span * 1.2, target.y - span * 0.8, target.z + span * 0.6)
     fill_data.energy = 75
-    fill_data.size = 5.0
+    fill_data.size = max(span * 2.4, 2.0)
     look_at(fill, target)
 
 
@@ -268,7 +300,8 @@ def main(default_dataset: str | None = None) -> int:
                 clear_scene()
                 try:
                     objects = import_asset(asset)
-                    bbox_min, bbox_max = normalize_for_preview(objects)
+                    upright = args.dataset in {"hsrd100", "renderpeople", "renderpeople_free", "thuman2"}
+                    bbox_min, bbox_max = normalize_for_preview(objects, upright=upright)
                     setup_camera_and_lights(bbox_min, bbox_max, args.resolution)
                     render_preview(preview_path)
                     status = "ok"
