@@ -161,8 +161,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--queries", nargs="+", default=DEFAULT_QUERIES)
     parser.add_argument("--queries-file", default=None)
     parser.add_argument("--asset-type", choices=["scene", "model"], default="scene")
-    parser.add_argument("--batch-size", type=int, default=5)
-    parser.add_argument("--candidate-pool-size", type=int, default=None, help="Optional cap on candidates inspected per query.")
     parser.add_argument("--page-size", type=int, default=5)
     parser.add_argument("--max-rounds", type=int, default=10000)
     parser.add_argument("--seed", type=int, default=20260611)
@@ -215,6 +213,9 @@ def current_count(index_json: str) -> int:
 
 def run_batch(query: str, args: argparse.Namespace) -> int:
     before = current_count(args.index_json)
+    remaining = max(args.target_count - before, 0)
+    if remaining <= 0:
+        return 0
     cmd = [
         sys.executable,
         str(ROOT / "dataset" / "utils" / "util_search_download_blenderkit.py"),
@@ -223,7 +224,7 @@ def run_batch(query: str, args: argparse.Namespace) -> int:
         "--asset-type",
         args.asset_type,
         "--max-results",
-        str(args.batch_size),
+        str(remaining),
         "--page-size",
         str(args.page_size),
         "--out-dir",
@@ -249,14 +250,12 @@ def run_batch(query: str, args: argparse.Namespace) -> int:
         "--preview-height",
         str(args.preview_height),
     ]
-    if args.candidate_pool_size is not None:
-        cmd += ["--candidate-pool-size", str(args.candidate_pool_size)]
     if args.download_paid:
         cmd.append("--download-paid")
     if args.free_only:
         cmd.append("--free-only")
     command_text = " ".join(shlex.quote(part) for part in cmd)
-    progress_write(f"[RandomHarvest] query={query!r} count={before}/{args.target_count}")
+    progress_write(f"[RandomHarvest] query={query!r} count={before}/{args.target_count} page_size={args.page_size}")
     progress_write(f"[RandomHarvest] cmd: {command_text}")
     if args.show_subprocess_output:
         subprocess.run(cmd, cwd=ROOT, check=True)

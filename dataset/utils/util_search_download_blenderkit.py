@@ -33,12 +33,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--query", default="interior room")
     parser.add_argument("--asset-type", choices=["scene", "model"], default="scene")
     parser.add_argument("--max-results", type=int, default=20)
-    parser.add_argument(
-        "--candidate-pool-size",
-        type=int,
-        default=None,
-        help="Optional cap on inspected candidates. Omit to keep paging until --max-results succeeds or search is exhausted.",
-    )
     parser.add_argument("--page-size", type=int, default=20)
     parser.add_argument("--out-dir", default="data/blenderkit")
     parser.add_argument("--manifest-out", default="outputs/previews/blenderkit/downloads.jsonl")
@@ -142,19 +136,26 @@ def search_assets(args: argparse.Namespace, api_key: str, max_results: int | Non
     return results
 
 
-def iter_search_assets(args: argparse.Namespace, api_key: str):
+def usable_assets(rows: list[dict], args: argparse.Namespace) -> list[dict]:
+    assets = []
+    for row in rows:
+        if args.free_only and not row.get("isFree", False):
+            continue
+        if not args.download_paid and not row.get("isFree", False):
+            continue
+        assets.append(row)
+    return assets
+
+
+def iter_search_pages(args: argparse.Namespace, api_key: str):
     url = build_search_url(args.query, args.asset_type, args.page_size)
     page_index = 1
     while url:
         data = request_json(url, api_key, args.user_agent)
         rows = data.get("results", [])
-        print(f"[BlenderKit] Search page {page_index}: {len(rows)} candidate(s)")
-        for row in rows:
-            if args.free_only and not row.get("isFree", False):
-                continue
-            if not args.download_paid and not row.get("isFree", False):
-                continue
-            yield row
+        assets = usable_assets(rows, args)
+        print(f"[BlenderKit] Search page {page_index}: {len(rows)} candidate(s), {len(assets)} usable")
+        yield page_index, assets
         url = data.get("next")
         page_index += 1
 
@@ -266,68 +267,79 @@ def main() -> int:
     skipped_existing = 0
     inspected_count = 0
     scene_uuid = str(uuid.uuid4())
-    for asset in iter_search_assets(args, api_key):
+    for page_index, page_assets in iter_search_pages(args, api_key):
         if successful >= args.max_results:
             break
-        if args.candidate_pool_size is not None and inspected_count >= args.candidate_pool_size:
-            print(f"[BlenderKit] Reached inspected candidate cap: {args.candidate_pool_size}")
+        if not page_assets:
+            print(f"[BlenderKit] Page {page_index} has no usable assets; checking next page.")
+            continue
+        page_success_before = successful
+        page_inspected_before = inspected_count
+        for asset in page_assets:
+            if successful >= args.max_results:
+                break
+            inspected_count += 1
+            inspected_assets.append(asset)
+            if args.skip_existing_index and (
+                str(asset.get("id")) in seen or str(asset.get("assetBaseId")) in seen
+            ):
+                skipped_existing += 1
+                continue
+            file_meta = blend_file(asset)
+            if not file_meta:
+                print(f"[BlenderKit] Skip no .blend: {asset.get('name')}")
+                continue
+            can_download = bool(asset.get("canDownload", False))
+            if not can_download and not api_key:
+                print(f"[BlenderKit] Skip not downloadable without login: {asset.get('name')}")
+                continue
+            dst = out_dir / filename_for(asset, file_meta)
+            print(f"[BlenderKit] candidate={inspected_count:04d} success={successful}/{args.max_results} {asset.get('name')} -> {dst}")
+            resolved_url = None
+            if not args.dry_run:
+                try:
+                    resolved_url = resolve_download_url(file_meta["downloadUrl"], api_key, args.user_agent, scene_uuid)
+                    download_file(resolved_url, dst, api_key, args.user_agent, args.overwrite)
+                except urllib.error.HTTPError as exc:
+                    detail = exc.read().decode("utf-8", errors="replace")[:500]
+                    print(f"[BlenderKit] Skip download HTTP {exc.code} for {asset.get('name')}: {detail}", file=sys.stderr)
+                    continue
+                except urllib.error.URLError as exc:
+                    print(f"[BlenderKit] Skip download URL error for {asset.get('name')}: {exc}", file=sys.stderr)
+                    continue
+                except RuntimeError as exc:
+                    print(f"[BlenderKit] Skip download runtime error for {asset.get('name')}: {exc}", file=sys.stderr)
+                    continue
+            record = {
+                "source": "blenderkit",
+                "license": asset.get("license"),
+                "asset_type": asset.get("assetType"),
+                "asset_id": asset.get("id"),
+                "asset_base_id": asset.get("assetBaseId"),
+                "name": asset.get("name"),
+                "is_free": asset.get("isFree"),
+                "can_download": asset.get("canDownload"),
+                "download_path": repo_relative(dst),
+                "blend_paths": [repo_relative(dst)],
+                "download_api_url": file_meta.get("downloadUrl"),
+                "resolved_url": resolved_url,
+                "thumbnail": asset.get("thumbnailLargeUrl") or asset.get("thumbnailMiddleUrl"),
+            }
+            records.append(record)
+            if args.preview_and_delete and not args.dry_run:
+                curate_one(record, args)
+            if asset.get("id"):
+                seen.add(str(asset.get("id")))
+            if asset.get("assetBaseId"):
+                seen.add(str(asset.get("assetBaseId")))
+            successful += 1
+            time.sleep(0.2)
+        page_success = successful - page_success_before
+        page_inspected = inspected_count - page_inspected_before
+        print(f"[BlenderKit] Page {page_index} processed: inspected={page_inspected}, successful={page_success}")
+        if page_success > 0:
             break
-        inspected_count += 1
-        inspected_assets.append(asset)
-        if args.skip_existing_index and (
-            str(asset.get("id")) in seen or str(asset.get("assetBaseId")) in seen
-        ):
-            skipped_existing += 1
-            continue
-        file_meta = blend_file(asset)
-        if not file_meta:
-            print(f"[BlenderKit] Skip no .blend: {asset.get('name')}")
-            continue
-        can_download = bool(asset.get("canDownload", False))
-        if not can_download and not api_key:
-            print(f"[BlenderKit] Skip not downloadable without login: {asset.get('name')}")
-            continue
-        dst = out_dir / filename_for(asset, file_meta)
-        print(f"[BlenderKit] candidate={inspected_count:04d} success={successful}/{args.max_results} {asset.get('name')} -> {dst}")
-        resolved_url = None
-        if not args.dry_run:
-            try:
-                resolved_url = resolve_download_url(file_meta["downloadUrl"], api_key, args.user_agent, scene_uuid)
-                download_file(resolved_url, dst, api_key, args.user_agent, args.overwrite)
-            except urllib.error.HTTPError as exc:
-                detail = exc.read().decode("utf-8", errors="replace")[:500]
-                print(f"[BlenderKit] Skip download HTTP {exc.code} for {asset.get('name')}: {detail}", file=sys.stderr)
-                continue
-            except urllib.error.URLError as exc:
-                print(f"[BlenderKit] Skip download URL error for {asset.get('name')}: {exc}", file=sys.stderr)
-                continue
-            except RuntimeError as exc:
-                print(f"[BlenderKit] Skip download runtime error for {asset.get('name')}: {exc}", file=sys.stderr)
-                continue
-        record = {
-            "source": "blenderkit",
-            "license": asset.get("license"),
-            "asset_type": asset.get("assetType"),
-            "asset_id": asset.get("id"),
-            "asset_base_id": asset.get("assetBaseId"),
-            "name": asset.get("name"),
-            "is_free": asset.get("isFree"),
-            "can_download": asset.get("canDownload"),
-            "download_path": repo_relative(dst),
-            "blend_paths": [repo_relative(dst)],
-            "download_api_url": file_meta.get("downloadUrl"),
-            "resolved_url": resolved_url,
-            "thumbnail": asset.get("thumbnailLargeUrl") or asset.get("thumbnailMiddleUrl"),
-        }
-        records.append(record)
-        if args.preview_and_delete and not args.dry_run:
-            curate_one(record, args)
-        if asset.get("id"):
-            seen.add(str(asset.get("id")))
-        if asset.get("assetBaseId"):
-            seen.add(str(asset.get("assetBaseId")))
-        successful += 1
-        time.sleep(0.2)
+        print(f"[BlenderKit] Page {page_index} produced no new previews; checking next page.")
 
     print(
         f"[BlenderKit] Inspected {inspected_count} candidate(s), "
