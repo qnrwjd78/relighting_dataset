@@ -195,7 +195,7 @@
   "spatial": {
     "enabled": true,
     "positions_per_scene": 64,
-    "sampling": "grid",
+    "sampling": "jittered_grid",
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "fixed_radius": 0.06,
@@ -229,7 +229,10 @@
       1.0,
       1.0
     ],
-    "include_hdri_in_point_lights": false
+    "include_hdri_in_point_lights": false,
+    "grid_resolution": 4,
+    "jitter": 0.8,
+    "min_position_distance": 0.05
   },
   "diffuse": {
     "enabled": true,

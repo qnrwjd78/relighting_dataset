@@ -91,7 +91,10 @@
   "spatial": {
     "enabled": true,
     "positions_per_scene": 64,
-    "sampling": "grid",
+    "sampling": "jittered_grid",
+    "grid_resolution": 4,
+    "jitter": 0.8,
+    "min_position_distance": 0.05,
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "fixed_radius": 0.06,

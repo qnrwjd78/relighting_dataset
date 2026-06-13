@@ -1805,6 +1805,64 @@ def render_pbr_maps(scene_dir: Path, config: dict) -> dict:
     return outputs
 
 
+def canonical_position_distance(a: list[float], b: list[float]) -> float:
+    return math.sqrt(sum((float(av) - float(bv)) ** 2 for av, bv in zip(a, b)))
+
+
+def respects_min_position_distance(candidate: list[float], positions: list[list[float]], min_distance: float) -> bool:
+    if min_distance <= 0.0:
+        return True
+    return all(canonical_position_distance(candidate, position) >= min_distance for position in positions)
+
+
+def jittered_cell_coordinate(rng: random.Random, axis_range: list[float], cell_index: int, side: int, jitter: float) -> float:
+    lo, hi = float(axis_range[0]), float(axis_range[1])
+    cell_size = (hi - lo) / float(side)
+    center = lo + cell_size * (float(cell_index) + 0.5)
+    half_jitter = abs(cell_size) * 0.5 * jitter
+    if half_jitter <= 0.0:
+        return center
+    value = rng.uniform(center - half_jitter, center + half_jitter)
+    return min(max(value, min(lo, hi)), max(lo, hi))
+
+
+def sample_jittered_grid_positions(
+    pr: dict,
+    count: int,
+    rng: random.Random,
+    spatial: dict,
+    existing_positions: list[list[float]],
+) -> list[list[float]]:
+    side = int(spatial.get("grid_resolution") or math.ceil(count ** (1.0 / 3.0)))
+    side = max(1, side)
+    while side**3 < count:
+        side += 1
+    jitter = min(max(float(spatial.get("jitter", 0.8)), 0.0), 1.0)
+    min_distance = max(float(spatial.get("min_position_distance", 0.0)), 0.0)
+    max_attempts = max(int(spatial.get("jitter_attempts", 32)), 1)
+    ranges = [pr["x"], pr["y"], pr["z"]]
+    cells = [(ix, iy, iz) for iz in range(side) for iy in range(side) for ix in range(side)]
+    rng.shuffle(cells)
+
+    sampled: list[list[float]] = []
+    for cell in cells:
+        if len(sampled) >= count:
+            break
+        candidate: list[float] | None = None
+        fallback: list[float] | None = None
+        for _attempt in range(max_attempts):
+            coords = [
+                jittered_cell_coordinate(rng, axis_range, cell_index, side, jitter)
+                for cell_index, axis_range in zip(cell, ranges)
+            ]
+            fallback = coords
+            if respects_min_position_distance(coords, existing_positions + sampled, min_distance):
+                candidate = coords
+                break
+        sampled.append(candidate or fallback or [0.0, 0.0, 0.0])
+    return sampled
+
+
 def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[float]]:
     spatial = config["spatial"]
     count = int(spatial.get("positions_per_scene", 64))
@@ -1823,6 +1881,8 @@ def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[floa
         )
     remaining = count - len(positions)
     sampling = spatial.get("sampling", "stratified_random")
+    if remaining > 0 and sampling == "jittered_grid":
+        positions.extend(sample_jittered_grid_positions(pr, remaining, rng, spatial, positions))
     if remaining > 0 and sampling in {"stratified_random", "grid"}:
         side = max(1, math.ceil(remaining ** (1.0 / 3.0)))
         cells = [(ix, iy, iz) for iz in range(side) for iy in range(side) for ix in range(side)]
@@ -2062,6 +2122,10 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
         "receiver_materials": receiver_materials,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
+        "position_sampling": spatial.get("sampling", "stratified_random"),
+        "grid_resolution": spatial.get("grid_resolution"),
+        "jitter": spatial.get("jitter"),
+        "min_position_distance": spatial.get("min_position_distance"),
         "valid_point_light_count": sum(1 for light in lights_meta if light["valid"]),
         "invalid_point_light_count": sum(1 for light in lights_meta if not light["valid"]),
         "include_hdri_in_point_lights": include_hdri_in_point_lights,
