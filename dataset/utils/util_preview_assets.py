@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -12,15 +13,19 @@ try:
     import bpy
     from mathutils import Matrix, Vector
 except ModuleNotFoundError as exc:  # pragma: no cover - must run inside Blender
-    raise SystemExit("dataset/preview_*.py must be run by Blender Python.") from exc
+    raise SystemExit("dataset/{portrait,object}/preview_*.py must be run by Blender Python.") from exc
 
 
-SUPPORTED_EXTS = {".blend", ".fbx", ".obj", ".glb", ".gltf", ".ply", ".stl"}
+SUPPORTED_EXTS = {".blend", ".fbx", ".obj", ".glb", ".gltf", ".dae", ".ply", ".stl"}
 PREFERRED_EXTS = {
+    "3dscanstore_free_head": [".blend", ".fbx", ".obj", ".glb", ".gltf", ".ply", ".stl"],
+    "blenderkit_human": [".blend", ".fbx", ".glb", ".gltf", ".obj", ".ply", ".stl"],
     "renderpeople": [".blend", ".fbx", ".glb", ".gltf", ".obj", ".ply", ".stl"],
     "renderpeople_free": [".blend", ".fbx", ".glb", ".gltf", ".obj", ".ply", ".stl"],
+    "humano_free": [".blend", ".fbx", ".glb", ".gltf", ".obj", ".dae", ".ply", ".stl"],
     "hsrd100": [".obj", ".fbx", ".glb", ".gltf", ".ply", ".stl", ".blend"],
     "objaverse_xl": [".glb", ".gltf", ".obj", ".fbx", ".ply", ".stl", ".blend"],
+    "sketchfab_human": [".glb", ".gltf", ".blend", ".fbx", ".obj", ".dae", ".ply", ".stl"],
     "thuman2": [".obj", ".fbx", ".glb", ".gltf", ".ply", ".stl", ".blend"],
 }
 
@@ -42,6 +47,13 @@ def parse_args(default_dataset: str | None = None) -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--resolution", type=int, default=768)
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument(
+        "--no-dedupe-assets",
+        dest="dedupe_assets",
+        action="store_false",
+        help="Keep multiple formats/LODs for the same RenderPeople identity.",
+    )
+    parser.set_defaults(dedupe_assets=True)
     return parser.parse_args(argv)
 
 
@@ -69,7 +81,26 @@ def import_blend_objects(path: Path) -> list[bpy.types.Object]:
     return [obj for obj in bpy.data.objects if obj not in before] or imported
 
 
-def import_asset(path: Path) -> list[bpy.types.Object]:
+def import_obj_asset(path: Path, forward_axis: str | None = None, up_axis: str | None = None) -> list[bpy.types.Object]:
+    before = set(bpy.data.objects)
+    kwargs = {"filepath": str(path)}
+    if forward_axis is not None:
+        kwargs["forward_axis"] = forward_axis
+    if up_axis is not None:
+        kwargs["up_axis"] = up_axis
+    if hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "obj_import"):
+        bpy.ops.wm.obj_import(**kwargs)
+    else:
+        legacy_kwargs = {"filepath": str(path)}
+        if forward_axis is not None:
+            legacy_kwargs["axis_forward"] = forward_axis.replace("NEGATIVE_", "-")
+        if up_axis is not None:
+            legacy_kwargs["axis_up"] = up_axis
+        bpy.ops.import_scene.obj(**legacy_kwargs)
+    return [obj for obj in bpy.data.objects if obj not in before]
+
+
+def import_asset(path: Path, obj_forward_axis: str | None = None, obj_up_axis: str | None = None) -> list[bpy.types.Object]:
     before = set(bpy.data.objects)
     ext = path.suffix.lower()
     if ext == ".blend":
@@ -80,12 +111,11 @@ def import_asset(path: Path) -> list[bpy.types.Object]:
     elif ext == ".fbx":
         bpy.ops.import_scene.fbx(filepath=str(path))
         imported = [obj for obj in bpy.data.objects if obj not in before]
-    elif ext == ".obj":
-        if hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "obj_import"):
-            bpy.ops.wm.obj_import(filepath=str(path))
-        else:
-            bpy.ops.import_scene.obj(filepath=str(path))
+    elif ext == ".dae":
+        bpy.ops.wm.collada_import(filepath=str(path))
         imported = [obj for obj in bpy.data.objects if obj not in before]
+    elif ext == ".obj":
+        imported = import_obj_asset(path, obj_forward_axis, obj_up_axis)
     elif ext == ".ply":
         if hasattr(bpy.ops, "wm") and hasattr(bpy.ops.wm, "ply_import"):
             bpy.ops.wm.ply_import(filepath=str(path))
@@ -106,6 +136,113 @@ def import_asset(path: Path) -> list[bpy.types.Object]:
     if not mesh_objects:
         raise RuntimeError(f"No mesh objects imported from {path}")
     return mesh_objects
+
+
+def first_obj_value(path: Path, prefix: str) -> str | None:
+    with path.open("r", encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if stripped.startswith(prefix):
+                value = stripped[len(prefix) :].strip()
+                return value or None
+    return None
+
+
+def find_hsrd100_diffuse_texture(asset: Path, material_name: str | None) -> Path | None:
+    suffixes = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
+    candidates: list[Path] = []
+    if material_name:
+        candidates.extend(path for path in asset.parent.glob(f"{material_name}_diffuse.*") if path.suffix.lower() in suffixes)
+    candidates.extend(path for path in asset.parent.glob(f"{asset.stem}*_diffuse.*") if path.suffix.lower() in suffixes)
+    candidates.extend(path for path in asset.parent.glob("*diffuse.*") if path.suffix.lower() in suffixes)
+    return sorted(set(candidates), key=str)[0] if candidates else None
+
+
+def write_hsrd100_mtl(asset: Path, item_id: str, mtl_dir: Path) -> dict | None:
+    if asset.suffix.lower() != ".obj":
+        return None
+    material_name = first_obj_value(asset, "usemtl ") or f"{asset.stem}_mat"
+    obj_mtl_name = first_obj_value(asset, "mtllib ") or f"{asset.stem}.mtl"
+    texture = find_hsrd100_diffuse_texture(asset, material_name)
+    if texture is None:
+        return None
+    mtl_dir.mkdir(parents=True, exist_ok=True)
+    mtl_path = mtl_dir / f"{item_id}.mtl"
+    mtl_text = "\n".join(
+        [
+            f"# Generated preview material for {item_id}",
+            f"# Source OBJ: {asset}",
+            f"# Source texture: {texture}",
+            f"newmtl {material_name}",
+            "Ka 1.000000 1.000000 1.000000",
+            "Kd 1.000000 1.000000 1.000000",
+            "Ks 0.000000 0.000000 0.000000",
+            "Ns 10.000000",
+            "d 1.000000",
+            "illum 2",
+            f"map_Kd {texture.name}",
+            "",
+        ]
+    )
+    mtl_path.write_text(mtl_text, encoding="utf-8")
+    return {
+        "path": mtl_path,
+        "obj_mtl_name": obj_mtl_name,
+        "material_name": material_name,
+        "texture": texture,
+    }
+
+
+def objects_have_image_texture(objects: list[bpy.types.Object]) -> bool:
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        for mat in obj.data.materials:
+            if not mat or not mat.use_nodes:
+                continue
+            for node in mat.node_tree.nodes:
+                if node.bl_idname == "ShaderNodeTexImage" and node.image is not None:
+                    return True
+    return False
+
+
+def apply_texture_material(objects: list[bpy.types.Object], material_name: str, texture: Path) -> None:
+    mat = bpy.data.materials.new(material_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    image_node = nodes.new("ShaderNodeTexImage")
+    image_node.image = bpy.data.images.load(str(texture), check_existing=True)
+    if bsdf:
+        mat.node_tree.links.new(image_node.outputs["Color"], bsdf.inputs["Base Color"])
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = 0.75
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
+
+
+def import_hsrd100_asset(asset: Path, mtl_info: dict | None) -> list[bpy.types.Object]:
+    if asset.suffix.lower() != ".obj":
+        return import_asset(asset, obj_forward_axis="NEGATIVE_Y", obj_up_axis="Z")
+    link_path = asset.parent / (mtl_info["obj_mtl_name"] if mtl_info else f"{asset.stem}.mtl")
+    made_link = False
+    if mtl_info and not link_path.exists():
+        try:
+            link_path.symlink_to(mtl_info["path"])
+            made_link = True
+        except OSError:
+            made_link = False
+    try:
+        objects = import_asset(asset, obj_forward_axis="NEGATIVE_Y", obj_up_axis="Z")
+    finally:
+        if made_link:
+            link_path.unlink(missing_ok=True)
+    if mtl_info and not objects_have_image_texture(objects):
+        apply_texture_material(objects, mtl_info["material_name"], mtl_info["texture"])
+    return objects
 
 
 def mesh_bbox(objects: list[bpy.types.Object]) -> tuple[Vector, Vector]:
@@ -235,10 +372,44 @@ def candidate_score(path: Path, dataset: str) -> tuple[int, int, str]:
     return (ext_rank, len(path.parts), str(path))
 
 
-def find_assets(root: Path, dataset: str) -> list[Path]:
+def renderpeople_identity_key(path: Path) -> str:
+    stem = path.stem.lower()
+    for pattern in (
+        r"_(?:100k|200k|300k|60k|30k)$",
+        r"_(?:2k|4k)$",
+        r"_(?:yup|zup)_[at]$",
+        r"_(?:u3d|ue4|ue)$",
+    ):
+        stem = re.sub(pattern, "", stem)
+    for marker in ("_animated_", "_rigged_", "_posed_", "_4d_"):
+        index = stem.find(marker)
+        if index > 2 and stem[:index] != "rp":
+            return stem[:index]
+    return stem
+
+
+def renderpeople_score(path: Path, dataset: str) -> tuple[int, int, int, int, int, str]:
+    preferred = PREFERRED_EXTS[dataset]
+    ext_rank = preferred.index(path.suffix.lower()) if path.suffix.lower() in preferred else len(preferred)
+    lower_path = str(path).lower()
+    format_order = ["_bld", "_fbx", "_obj", "_glb", "_c4d", "_max", "_maya", "_3dm", "_skp", "_u3d", "_ue4", "_ue"]
+    format_rank = next((index for index, token in enumerate(format_order) if token in lower_path), len(format_order))
+    lod_order = ["300k", "200k", "100k", "60k", "30k", "4k", "2k"]
+    lod_rank = next((index for index, token in enumerate(lod_order) if token in path.stem.lower()), len(lod_order))
+    pose_order = ["zup_t", "zup_a", "yup_t", "yup_a", "u3d", "ue4", "ue"]
+    pose_rank = next((index for index, token in enumerate(pose_order) if token in path.stem.lower()), len(pose_order))
+    return (ext_rank, format_rank, lod_rank, pose_rank, len(path.parts), str(path))
+
+
+def find_assets(root: Path, dataset: str, dedupe_assets: bool = True) -> list[Path]:
     all_files = [path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in SUPPORTED_EXTS]
     if dataset == "objaverse_xl":
         selected = sorted(all_files, key=lambda p: candidate_score(p, dataset))
+    elif dataset in {"renderpeople", "renderpeople_free"} and dedupe_assets:
+        grouped: dict[str, list[Path]] = {}
+        for path in all_files:
+            grouped.setdefault(renderpeople_identity_key(path), []).append(path)
+        selected = [sorted(paths, key=lambda p: renderpeople_score(p, dataset))[0] for paths in grouped.values()]
     elif dataset == "thuman2":
         # THuman folders often contain one useful textured OBJ per subject. Keep one best candidate per folder.
         grouped: dict[Path, list[Path]] = {}
@@ -277,8 +448,9 @@ def main(default_dataset: str | None = None) -> int:
     index_out_arg = args.index_out or args.metadata_out
     index_out = Path(index_out_arg).resolve() if index_out_arg else preview_root / f"{args.dataset}_index.json"
     manifest = Path(args.manifest).resolve() if args.manifest else preview_root / f"{args.dataset}_objects.txt"
+    mtl_dir = preview_root / "mtl" if args.dataset == "hsrd100" else None
 
-    assets = find_assets(root, args.dataset)
+    assets = find_assets(root, args.dataset, args.dedupe_assets)
     if args.limit is not None:
         assets = assets[: args.limit]
     if not assets:
@@ -287,6 +459,8 @@ def main(default_dataset: str | None = None) -> int:
     manifest.parent.mkdir(parents=True, exist_ok=True)
     metadata_dir.mkdir(parents=True, exist_ok=True)
     index_out.parent.mkdir(parents=True, exist_ok=True)
+    if mtl_dir is not None:
+        mtl_dir.mkdir(parents=True, exist_ok=True)
     index_items = []
     manifest_lines = []
     with progress_bar(assets, total=len(assets), desc=f"Preview {args.dataset}", unit="asset") as pbar:
@@ -295,12 +469,22 @@ def main(default_dataset: str | None = None) -> int:
             pbar.set_postfix(item=item_id)
             preview_path = out_dir / f"{item_id}.png"
             item_metadata_path = metadata_dir / f"{item_id}.json"
+            mtl_info = write_hsrd100_mtl(asset, item_id, mtl_dir) if mtl_dir is not None else None
             progress_write(f"[PortraitPreview] {index + 1}/{len(assets)} {asset}")
             if not preview_path.exists() or args.overwrite:
                 clear_scene()
                 try:
-                    objects = import_asset(asset)
-                    upright = args.dataset in {"hsrd100", "renderpeople", "renderpeople_free", "thuman2"}
+                    objects = import_hsrd100_asset(asset, mtl_info) if args.dataset == "hsrd100" else import_asset(asset)
+                    upright = args.dataset in {
+                        "3dscanstore_free_head",
+                        "blenderkit_human",
+                        "hsrd100",
+                        "renderpeople",
+                        "renderpeople_free",
+                        "humano_free",
+                        "sketchfab_human",
+                        "thuman2",
+                    }
                     bbox_min, bbox_max = normalize_for_preview(objects, upright=upright)
                     setup_camera_and_lights(bbox_min, bbox_max, args.resolution)
                     render_preview(preview_path)
@@ -325,6 +509,7 @@ def main(default_dataset: str | None = None) -> int:
                 "asset": str(asset),
                 "source_path": str(asset),
                 "preview": str(preview_path),
+                "mtl": str(mtl_info["path"]) if mtl_info else None,
                 "asset_type": "portrait_asset",
                 "status": status,
                 "error": error,

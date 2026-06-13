@@ -5,7 +5,10 @@ Synthetic relighting dataset tools for object/portrait assets and Blender scene 
 ## Layout
 
 ```text
-dataset/   download_*.py and preview_*.py entrypoints
+dataset/hdri/      HDRI download_*.py and preview_*.py entrypoints
+dataset/portrait/  portrait/human download_*.py and preview_*.py entrypoints
+dataset/object/    object/material download_*.py and preview_*.py entrypoints
+dataset/scene/     scene download_*.py and preview_*.py entrypoints
 dataset/utils/   shared util_*.py helpers
 scripts/   render_*_relighting.py entrypoints
 scripts/utils/   shared util_*.py helpers
@@ -20,25 +23,55 @@ manifests/ example manifests only
 Download bulk datasets into `data/{dataset}`:
 
 ```bash
-python3 dataset/download_polyhaven_hdri.py --resolution 2k --format hdr --per-category 30
-python3 dataset/download_polyhaven_textures.py --resolution 2k --format jpg --per-category 20
-python3 dataset/download_objaverse_xl.py --limit 5000
-python3 dataset/download_hsrd100.py --lod LOD1 --extract
+python3 dataset/hdri/download_polyhaven_hdri.py --resolution 2k --format hdr --per-category 30
+python3 dataset/object/download_polyhaven_textures.py --resolution 2k --format jpg --per-category 20
+python3 dataset/object/download_objaverse_xl.py --limit 5000
+python3 dataset/portrait/download_hsrd100.py --lod LOD1 --extract
 ```
 
-Prepare local/direct RenderPeople free packages, then preview the extracted assets:
+Prepare portrait sources:
 
 ```bash
-python3 dataset/utils/util_prepare_renderpeople_free.py --zip-dir /path/to/renderpeople_zips
-blender -b --python dataset/preview_renderpeople_free.py -- \
+python3 dataset/portrait/download_facescape_tu.py --extract --delete-zip-after-extract
+python3 dataset/portrait/download_renderpeople_free.py --extract --delete-zip-after-extract
+python3 dataset/portrait/download_3dscanstore_free_head.py --extract --delete-zip-after-extract
+python3 dataset/portrait/download_humano_free.py --dry-run
+python3 dataset/portrait/download_sketchfab_human.py --dry-run
+```
+
+Preview portrait/object/HDRI assets into `outputs/previews/{dataset}`:
+
+```bash
+blender -b --python dataset/portrait/preview_renderpeople_free.py -- \
   --root data/renderpeople_free/extracted
+
+blender -b --python dataset/portrait/preview_facescape_tu.py -- \
+  --root data/facescape/tu_model/extracted \
+  --add-eyes \
+  --add-hair-cap \
+  --overwrite
+
+blender -b --python dataset/portrait/preview_hsrd100.py -- \
+  --root data/hsrd100/LOD1
+
+python3 dataset/portrait/preview_blenderkit_human.py \
+  --api-key-file blenderkit_key.txt \
+  --queries-file dataset/portrait/queries_blenderkit_human.txt \
+  --target-count 50
+
+python3 dataset/hdri/preview_polyhaven_hdri.py
 ```
 
-Preview portrait/object assets into `outputs/previews/{dataset}`:
+Build a final curated portrait manifest from accepted source manifests:
 
 ```bash
-blender -b --python dataset/preview_hsrd100.py -- \
-  --root data/hsrd100/LOD1
+python3 dataset/portrait/build_portrait_asset_manifest.py \
+  --inputs \
+    outputs/previews/renderpeople_free/accepted.txt \
+    outputs/previews/humano_free/accepted.txt \
+    outputs/previews/blenderkit_human/accepted.txt \
+    outputs/previews/sketchfab_human/accepted.txt \
+  --out outputs/previews/portrait_assets/portrait_assets_objects.txt
 ```
 
 Preview outputs use:

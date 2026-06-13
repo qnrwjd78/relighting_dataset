@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import re
@@ -28,6 +29,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=704)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument("--engine", choices=["current", "eevee", "cycles", "workbench"], default="current")
+    parser.add_argument("--hdri-manifest", default=None)
+    parser.add_argument("--hdri-strength", type=float, default=1.0)
+    parser.add_argument("--hdri-seed", type=int, default=0)
     return parser.parse_args(argv)
 
 
@@ -39,6 +43,55 @@ def slug(value: str) -> str:
 
 def vec_to_list(v: Vector) -> list[float]:
     return [float(v.x), float(v.y), float(v.z)]
+
+
+def resolve_path(value: str | Path) -> Path:
+    path = Path(value)
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path.resolve()
+
+
+def read_hdri_manifest(path: str | Path) -> list[Path]:
+    manifest = resolve_path(path)
+    paths = []
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        hdri = resolve_path(line)
+        if hdri.suffix.lower() in {".hdr", ".exr"} and hdri.exists():
+            paths.append(hdri)
+    return paths
+
+
+def select_hdri(manifest: str | None, blend: Path, seed: int) -> Path | None:
+    if not manifest:
+        return None
+    paths = read_hdri_manifest(manifest)
+    if not paths:
+        raise RuntimeError(f"No existing HDRI files found in manifest: {manifest}")
+    digest = hashlib.sha256(f"{seed}:{blend}".encode("utf-8")).hexdigest()
+    return paths[int(digest[:16], 16) % len(paths)]
+
+
+def setup_hdri_world(hdri: Path, strength: float) -> None:
+    scene = bpy.context.scene
+    if scene.world is None:
+        scene.world = bpy.data.worlds.new("TL_preview_world")
+    world = scene.world
+    world.use_nodes = True
+    nodes = world.node_tree.nodes
+    links = world.node_tree.links
+    nodes.clear()
+
+    env = nodes.new("ShaderNodeTexEnvironment")
+    env.image = bpy.data.images.load(str(hdri), check_existing=True)
+    bg = nodes.new("ShaderNodeBackground")
+    bg.inputs["Strength"].default_value = strength
+    out = nodes.new("ShaderNodeOutputWorld")
+    links.new(env.outputs["Color"], bg.inputs["Color"])
+    links.new(bg.outputs["Background"], out.inputs["Surface"])
 
 
 def object_world_bbox(obj: bpy.types.Object) -> tuple[Vector, Vector] | None:
@@ -159,6 +212,9 @@ def main() -> int:
     bounds = scene_bbox(meshes)
     camera, camera_created = ensure_camera(meshes, bounds)
     setup_render(args.width, args.height, args.samples, args.engine)
+    hdri = select_hdri(args.hdri_manifest, blend, args.hdri_seed)
+    if hdri is not None:
+        setup_hdri_world(hdri, args.hdri_strength)
 
     row = {
         "source_blend": str(blend),
@@ -172,6 +228,8 @@ def main() -> int:
         "mesh_count": len(meshes),
         "bbox_min": vec_to_list(bounds[0]) if bounds else None,
         "bbox_max": vec_to_list(bounds[1]) if bounds else None,
+        "hdri": str(hdri) if hdri else None,
+        "hdri_strength": args.hdri_strength if hdri else None,
         "subject_candidates": ranked_subject_candidates(meshes),
     }
 

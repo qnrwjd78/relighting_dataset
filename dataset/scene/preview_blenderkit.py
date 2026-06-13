@@ -9,6 +9,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+DATASET_DIR = Path(__file__).resolve().parents[1]
+if str(DATASET_DIR) not in sys.path:
+    sys.path.insert(0, str(DATASET_DIR))
+
 from utils.util_progress import progress_bar, progress_write
 
 
@@ -16,7 +20,7 @@ def find_repo_root() -> Path:
     for path in Path(__file__).resolve().parents:
         if (path / "configs").exists() and (path / "tokenlight_dataset").exists():
             return path
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parents[2]
 
 
 ROOT = find_repo_root()

@@ -563,6 +563,20 @@ def hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
     return v, p, q
 
 
+def call_first_import_operator(path: Path, operator_names: list[str]) -> None:
+    errors = []
+    for operator_name in operator_names:
+        op = bpy.ops
+        try:
+            for part in operator_name.split("."):
+                op = getattr(op, part)
+            op(filepath=str(path))
+            return
+        except Exception as exc:
+            errors.append(f"{operator_name}: {exc}")
+    raise RuntimeError(f"Could not import {path} with any supported Blender operator: {'; '.join(errors)}")
+
+
 def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: random.Random, config: dict) -> list[bpy.types.Object]:
     before = set(bpy.data.objects)
     if asset_path:
@@ -577,22 +591,13 @@ def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: rando
         elif ext in (".glb", ".gltf"):
             bpy.ops.import_scene.gltf(filepath=str(path))
         elif ext == ".obj":
-            if hasattr(bpy.ops.import_scene, "obj"):
-                bpy.ops.import_scene.obj(filepath=str(path))
-            else:
-                bpy.ops.wm.obj_import(filepath=str(path))
+            call_first_import_operator(path, ["wm.obj_import", "import_scene.obj"])
         elif ext == ".fbx":
             bpy.ops.import_scene.fbx(filepath=str(path))
         elif ext == ".stl":
-            if hasattr(bpy.ops.import_mesh, "stl"):
-                bpy.ops.import_mesh.stl(filepath=str(path))
-            else:
-                bpy.ops.wm.stl_import(filepath=str(path))
+            call_first_import_operator(path, ["wm.stl_import", "import_mesh.stl"])
         elif ext == ".ply":
-            if hasattr(bpy.ops.import_mesh, "ply"):
-                bpy.ops.import_mesh.ply(filepath=str(path))
-            else:
-                bpy.ops.wm.ply_import(filepath=str(path))
+            call_first_import_operator(path, ["wm.ply_import", "import_mesh.ply"])
         else:
             raise ValueError(f"Unsupported object asset extension: {path}")
     else:
@@ -1066,22 +1071,58 @@ def look_at(obj: bpy.types.Object, target: Vector) -> None:
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
+def canonical_mapping(config: dict) -> str:
+    return str(config.get("canonical", {}).get("mapping", "canonical_rig")).lower()
+
+
+def uses_canonical_camera_rig(config: dict) -> bool:
+    mode = str(config.get("camera", {}).get("mode", canonical_mapping(config))).lower()
+    return mode in {"canonical_rig", "similarity", "tokenlight"}
+
+
+def canonical_camera_position(config: dict, rng: random.Random) -> Vector:
+    cam_cfg = config["camera"]
+    position = cam_cfg.get("canonical_position")
+    if position is not None:
+        return Vector((float(position[0]), float(position[1]), float(position[2])))
+    if cam_cfg.get("canonical_distance") is not None:
+        distance = float(cam_cfg["canonical_distance"])
+    else:
+        lo, hi = cam_cfg.get("canonical_distance_range", [4.5, 4.5])
+        distance = rng.uniform(float(lo), float(hi))
+    return Vector((0.0, -abs(distance), 0.0))
+
+
 def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy.types.Object, dict]:
     cam_cfg = config["camera"]
     fov = math.radians(float(cam_cfg.get("fov_degrees", 39.6)))
-    distance = rng.uniform(*cam_cfg.get("distance_range", [2.8, 3.6]))
     az = math.radians(rng.uniform(*cam_cfg.get("azimuth_degrees_range", [-35.0, 35.0])))
     el = math.radians(rng.uniform(*cam_cfg.get("elevation_degrees_range", [4.0, 24.0])))
-    jitter = float(cam_cfg.get("look_at_jitter", 0.06))
-    look_target = center + Vector((rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter)))
-
-    location = Vector(
+    view_direction = Vector(
         (
-            center.x + distance * math.cos(el) * math.sin(az),
-            center.y - distance * math.cos(el) * math.cos(az),
-            center.z + distance * math.sin(el),
+            math.cos(el) * math.sin(az),
+            -math.cos(el) * math.cos(az),
+            math.sin(el),
         )
-    )
+    ).normalized()
+
+    canonical_distance = None
+    camera_position_can = None
+    rig_scale = canonical_world_scale(config)
+    if uses_canonical_camera_rig(config):
+        camera_position_can = canonical_camera_position(config, rng)
+        camera_offset_can = camera_position_can - canonical_center(config)
+        if abs(float(camera_offset_can.x)) > 1e-6 or abs(float(camera_offset_can.z)) > 1e-6:
+            raise ValueError("canonical camera rig currently expects camera.canonical_position to lie on the y axis.")
+        canonical_distance = abs(float(camera_offset_can.y))
+        distance = canonical_distance * rig_scale
+        look_target = center
+    else:
+        distance = rng.uniform(*cam_cfg.get("distance_range", [2.8, 3.6]))
+        jitter = float(cam_cfg.get("look_at_jitter", 0.06))
+        look_target = center + Vector((rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter)))
+
+    location = center + view_direction * distance
     cam_data = bpy.data.cameras.new("Camera")
     cam = bpy.data.objects.new("Camera", cam_data)
     bpy.context.collection.objects.link(cam)
@@ -1097,6 +1138,11 @@ def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy
         "distance": distance,
         "azimuth_degrees": math.degrees(az),
         "elevation_degrees": math.degrees(el),
+        "mode": str(cam_cfg.get("mode", canonical_mapping(config))),
+        "canonical_distance": canonical_distance,
+        "canonical_position": vec_to_list(camera_position_can) if camera_position_can is not None else None,
+        "canonical_scale": rig_scale,
+        "distance_over_scale": float(distance / max(rig_scale, 1e-6)),
     }
     return cam, meta
 
@@ -1182,17 +1228,98 @@ def camera_basis(camera: bpy.types.Object) -> tuple[Vector, Vector, Vector]:
     return right, up, forward
 
 
-def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, center: Vector) -> Vector:
+def canonical_center(config: dict) -> Vector:
+    value = config["canonical"].get("center", [0.0, 0.0, 0.0])
+    return Vector((float(value[0]), float(value[1]), float(value[2])))
+
+
+def canonical_range_size(config: dict) -> float:
+    pr = config["canonical"].get("position_range", {})
+    sizes = []
+    for axis in ("x", "y", "z"):
+        lo, hi = pr.get(axis, [-1.0, 1.0])
+        sizes.append(abs(float(hi) - float(lo)))
+    return max(max(sizes), 1e-6)
+
+
+def canonical_axis_half_range(config: dict, axis: str) -> float:
+    pr = config["canonical"].get("position_range", {})
+    center = canonical_center(config)
+    center_value = {"x": center.x, "y": center.y, "z": center.z}[axis]
+    lo, hi = pr.get(axis, [-1.0, 1.0])
+    return max(abs(float(lo) - center_value), abs(float(hi) - center_value), 1e-6)
+
+
+def compute_canonical_scale(config: dict, bbox_min: Vector, bbox_max: Vector) -> float:
     canonical = config["canonical"]
+    if canonical.get("world_scale") is not None:
+        scale = float(canonical["world_scale"])
+    else:
+        size = bbox_max - bbox_min
+        max_extent = max(float(size.x), float(size.y), float(size.z), 1e-6)
+        margin = float(canonical.get("scale_margin", 1.25))
+        scale = margin * max_extent / canonical_range_size(config)
+    if canonical.get("min_world_scale") is not None:
+        scale = max(scale, float(canonical["min_world_scale"]))
+    if canonical.get("max_world_scale") is not None:
+        scale = min(scale, float(canonical["max_world_scale"]))
+    return max(scale, 1e-6)
+
+
+def set_canonical_runtime_transform(config: dict, bbox_min: Vector, bbox_max: Vector) -> None:
+    config.setdefault("_runtime", {})
+    config["_runtime"]["canonical_scale"] = compute_canonical_scale(config, bbox_min, bbox_max)
+
+
+def canonical_world_scale(config: dict) -> float:
+    runtime = config.get("_runtime", {})
+    if runtime.get("canonical_scale") is not None:
+        return float(runtime["canonical_scale"])
+    reference_size = float(config["canonical"].get("reference_object_size", 1.0))
+    return max(reference_size / canonical_range_size(config), 1e-6)
+
+
+def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, center: Vector) -> Vector:
     right, up, forward = camera_basis(camera)
-    camera_location = Vector(camera.location)
-    center_depth = max((center - camera_location).dot(forward), 0.1)
-    image_fraction = float(canonical.get("image_plane_fraction", 0.68))
-    depth_fraction = float(canonical.get("depth_fraction", 0.28))
-    depth = max(0.1, center_depth + float(p[2]) * center_depth * depth_fraction)
-    half_width = depth * math.tan(camera.data.angle_x * 0.5) * image_fraction
-    half_height = depth * math.tan(camera.data.angle_y * 0.5) * image_fraction
-    return camera_location + forward * depth + right * (float(p[0]) * half_width) + up * (float(p[1]) * half_height)
+    offset = Vector((float(p[0]), float(p[1]), float(p[2]))) - canonical_center(config)
+    mapping = canonical_mapping(config)
+    if mapping == "camera_frustum":
+        camera_location = Vector(camera.location)
+        center_depth = max((center - camera_location).dot(forward), 0.1)
+        y_norm = offset.y / canonical_axis_half_range(config, "y")
+        x_norm = offset.x / canonical_axis_half_range(config, "x")
+        z_norm = offset.z / canonical_axis_half_range(config, "z")
+        depth_fraction = float(config["canonical"].get("depth_fraction", 0.28))
+        depth = max(0.1, center_depth + y_norm * center_depth * depth_fraction)
+        image_fraction_x = float(config["canonical"].get("image_plane_fraction_x", config["canonical"].get("image_plane_fraction", 0.68)))
+        image_fraction_z = float(config["canonical"].get("image_plane_fraction_z", config["canonical"].get("image_plane_fraction", 0.68)))
+        half_width = depth * math.tan(camera.data.angle_x * 0.5) * image_fraction_x
+        half_height = depth * math.tan(camera.data.angle_y * 0.5) * image_fraction_z
+        return camera_location + forward * depth + right * (x_norm * half_width) + up * (z_norm * half_height)
+
+    scale = canonical_world_scale(config)
+    return center + right * (offset.x * scale) + forward * (offset.y * scale) + up * (offset.z * scale)
+
+
+def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vector) -> dict:
+    right, up, forward = camera_basis(camera)
+    scale = float(canonical_world_scale(config))
+    camera_depth = max((Vector(center) - Vector(camera.location)).dot(forward), 0.0)
+    return {
+        "target_center": vec_to_list(center),
+        "canonical_center": vec_to_list(canonical_center(config)),
+        "scale": scale,
+        "scale_rule": config["canonical"].get("scale_rule", "bbox_max_extent"),
+        "mapping": config["canonical"].get("mapping", "canonical_rig"),
+        "image_plane_fraction": config["canonical"].get("image_plane_fraction"),
+        "depth_fraction": config["canonical"].get("depth_fraction"),
+        "camera_distance": camera_depth,
+        "camera_distance_over_scale": float(camera_depth / max(scale, 1e-6)),
+        "axis_order": "x=camera_right,y=camera_forward_depth,z=camera_up",
+        "x_axis_world": vec_to_list(right),
+        "y_axis_world": vec_to_list(forward),
+        "z_axis_world": vec_to_list(up),
+    }
 
 
 def set_hdri_world(hdri_path: str | None, strength: float, rotation_z: float, fallback_color: list[float]) -> dict:
@@ -1303,18 +1430,17 @@ def sample_spatial_light_color(spatial: dict, rng: random.Random) -> list[float]
     return [float(color[0]), float(color[1]), float(color[2])]
 
 
-def sample_spatial_light_settings(spatial: dict, rng: random.Random) -> dict:
+def sample_spatial_light_settings(spatial: dict, rng: random.Random, world_scale: float) -> dict:
     base_energy = float(spatial.get("base_energy", 500.0))
-    intensity_lo, intensity_hi = random_float_range(rng, spatial.get("intensity_range"), 1.0)
     radius_lo, radius_hi = random_float_range(rng, spatial.get("radius_range"), float(spatial.get("fixed_radius", 0.06)))
-    intensity_scalar = rng.uniform(intensity_lo, intensity_hi)
-    radius = rng.uniform(radius_lo, radius_hi)
+    canonical_radius = rng.uniform(radius_lo, radius_hi)
+    component_color = spatial.get("component_color", [1.0, 1.0, 1.0])
     return {
-        "color": sample_spatial_light_color(spatial, rng),
-        "intensity_scalar": intensity_scalar,
-        "base_energy": base_energy,
-        "energy": base_energy * intensity_scalar,
-        "radius": radius,
+        "component_color": [float(component_color[0]), float(component_color[1]), float(component_color[2])],
+        "canonical_energy": base_energy,
+        "world_energy": base_energy * world_scale * world_scale,
+        "canonical_radius": canonical_radius,
+        "world_radius": canonical_radius * world_scale,
     }
 
 
@@ -1781,8 +1907,9 @@ def add_debug_light_volume_bounds(config: dict, camera: bpy.types.Object, center
             edges.append(((0, iy, iz), (1, iy, iz)))
 
     material = make_emission_mat("TL_debug_light_volume_bounds_mat", (1.0, 1.0, 1.0), strength=1.0)
+    bevel_depth = float(config["canonical"].get("debug_line_bevel", 0.006)) * canonical_world_scale(config)
     return [
-        create_debug_curve_line(f"TL_Debug_LightVolume_{i:02d}", corners[a], corners[b], material)
+        create_debug_curve_line(f"TL_Debug_LightVolume_{i:02d}", corners[a], corners[b], material, bevel_depth=bevel_depth)
         for i, (a, b) in enumerate(edges)
     ]
 
@@ -1807,29 +1934,20 @@ def render_light_position_preview(
     camera: bpy.types.Object,
     center: Vector,
 ) -> str:
-    original_location = Vector(camera.location)
-    original_rotation = camera.rotation_euler.copy()
     debug_objects = add_debug_light_volume_bounds(config, camera, center)
     z_layers = debug_light_z_layers(positions)
+    marker_radius = float(config["canonical"].get("debug_marker_radius", 0.02)) * canonical_world_scale(config)
     for i, p_can in enumerate(positions):
         p_world = canonical_to_world(p_can, camera, config, center)
-        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=0.015, location=p_world)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=marker_radius, location=p_world)
         marker = bpy.context.object
         marker.name = f"TL_Debug_LightPos_{i:03d}"
         marker.data.materials.append(debug_light_material(z_layers.get(i, 0)))
         debug_objects.append(marker)
     rel_path = f"../preview/{scene_dir.name}_light_positions.png"
-    right, up, _forward = camera_basis(camera)
-    distance = max((original_location - center).length, 0.1)
-    camera.location = original_location + right * (distance * 0.12) + up * (distance * 0.10) + (original_location - center).normalized() * (distance * 0.06)
-    look_at(camera, center)
-    bpy.context.view_layer.update()
     try:
         render_png(scene_dir / rel_path)
     finally:
-        camera.location = original_location
-        camera.rotation_euler = original_rotation
-        bpy.context.view_layer.update()
         for obj in debug_objects:
             bpy.data.objects.remove(obj, do_unlink=True)
     return rel_path
@@ -1886,22 +2004,25 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     receiver_bounds = config["_runtime"].get("receiver_bounds")
     receiver_materials = config["_runtime"].get("receiver_materials", [])
     invalid_reference_source: str | None = "spatial/ambient" if include_hdri_in_point_lights else None
+    transform_meta = canonical_transform_meta(config, camera, center)
+    world_scale = float(transform_meta["scale"])
     with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
         for light_index, p_can in enumerate(pbar):
             pbar.set_postfix(light=f"{light_index:03d}")
             p_world = canonical_to_world(p_can, camera, config, center)
             rel_base = f"spatial/point_lights/light_{light_index:03d}"
-            light_settings = sample_spatial_light_settings(spatial, rng)
-            radius = float(light_settings["radius"])
-            valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, radius)
+            light_settings = sample_spatial_light_settings(spatial, rng, world_scale)
+            canonical_radius = float(light_settings["canonical_radius"])
+            world_radius = float(light_settings["world_radius"])
+            valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
             copied_from = None
             if valid:
                 light = create_point_light(
                     f"TL_Point_{light_index:03d}",
                     p_world,
-                    float(light_settings["energy"]),
-                    radius,
-                    light_settings["color"],
+                    float(light_settings["world_energy"]),
+                    world_radius,
+                    light_settings["component_color"],
                 )
                 light_output = render_component(scene_dir, rel_base, config)
                 bpy.data.objects.remove(light, do_unlink=True)
@@ -1919,12 +2040,12 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
                 "valid": valid,
                 "skip_reason": skip_reason,
                 "copied_from": copied_from,
-                "base_energy": float(light_settings["base_energy"]),
-                "intensity_scalar": float(light_settings["intensity_scalar"]),
-                "energy": float(light_settings["energy"]),
-                "color": [float(c) for c in light_settings["color"]],
-                "canonical_radius": radius,
-                "world_radius": radius,
+                "canonical_energy": float(light_settings["canonical_energy"]),
+                "world_energy": float(light_settings["world_energy"]),
+                "energy": float(light_settings["world_energy"]),
+                "component_color": [float(c) for c in light_settings["component_color"]],
+                "canonical_radius": canonical_radius,
+                "world_radius": world_radius,
             }
             light_meta.update(component_meta(light_output))
             lights_meta.append(light_meta)
@@ -1936,7 +2057,8 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "ambient_source": source,
         "pbr_maps": pbr_maps,
         "light_volume_center": vec_to_list(center),
-        "light_volume_center_source": "camera_look_at",
+        "light_volume_center_source": "bbox_center",
+        "canonical_transform": transform_meta,
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
         "receiver_materials": receiver_materials,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
@@ -2021,12 +2143,24 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
     subject_objects = import_asset_or_primitive(asset, primitive, rng, config)
 
     bbox_min, bbox_max = mesh_bbox(subject_objects)
+    set_canonical_runtime_transform(config, bbox_min, bbox_max)
     center = (bbox_min + bbox_max) * 0.5
     camera, camera_meta = create_camera(config, rng, center)
     look_target = Vector(camera_meta["look_at"])
-    framing_meta = fit_camera_to_objects(camera, subject_objects, look_target)
-    camera_meta["location"] = framing_meta["location"]
-    camera_meta["distance"] = framing_meta["distance"]
+    fit_default = not uses_canonical_camera_rig(config)
+    if bool(config["camera"].get("fit_to_object", fit_default)):
+        framing_meta = fit_camera_to_objects(camera, subject_objects, look_target)
+        camera_meta["location"] = framing_meta["location"]
+        camera_meta["distance"] = framing_meta["distance"]
+        camera_meta["distance_over_scale"] = float(camera_meta["distance"] / max(canonical_world_scale(config), 1e-6))
+    else:
+        framing_meta = {
+            "adjusted": False,
+            "fit_to_object": False,
+            "location": vec_to_list(Vector(camera.location)),
+            "distance": float((Vector(camera.location) - look_target).length),
+            "margin": None,
+        }
     camera_meta["framing"] = framing_meta
     create_receivers(config, rng, camera, center)
 
@@ -2038,10 +2172,12 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
         source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
         source["hdri_mode"] = hdri_mode
         remove_all_lights()
+        ambient_preview = f"../preview/{scene_dir.name}_ambient.png"
+        render_png(scene_dir / ambient_preview)
         light_position_preview = None
         if config.get("_light_preview", False):
             positions = sample_spatial_positions(config, rng)
-            light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, look_target)
+            light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, center)
         meta = {
             "schema": "tokenlight_synthetic_components_v1",
             "scene_id": scene_id,
@@ -2066,9 +2202,11 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
             "debug": {
                 "preview_only": True,
                 "ambient_source": source,
+                "ambient_preview": ambient_preview,
                 "light_position_preview": light_position_preview,
-                "light_volume_center": vec_to_list(look_target),
-                "light_volume_center_source": "camera_look_at",
+                "light_volume_center": vec_to_list(center),
+                "light_volume_center_source": "bbox_center",
+                "canonical_transform": canonical_transform_meta(config, camera, center),
                 "receiver_materials": config["_runtime"].get("receiver_materials", []),
             },
         }
@@ -2102,9 +2240,9 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
     }
 
     if only in ("all", "spatial") and config["spatial"].get("enabled", True):
-        meta["spatial"] = render_spatial_components(scene_dir, config, rng, camera, look_target)
+        meta["spatial"] = render_spatial_components(scene_dir, config, rng, camera, center)
     if only in ("all", "diffuse") and config["diffuse"].get("enabled", True):
-        meta["diffuse"] = render_diffuse_components(scene_dir, config, rng, camera, look_target)
+        meta["diffuse"] = render_diffuse_components(scene_dir, config, rng, camera, center)
 
     write_json(scene_dir / "meta.json", meta)
     return meta

@@ -10,6 +10,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+DATASET_DIR = Path(__file__).resolve().parents[1]
+if str(DATASET_DIR) not in sys.path:
+    sys.path.insert(0, str(DATASET_DIR))
+
 from utils.util_progress import progress_bar, progress_write
 from utils.util_scene_index import (
     ROOT,

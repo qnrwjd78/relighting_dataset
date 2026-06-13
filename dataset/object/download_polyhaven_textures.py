@@ -4,16 +4,21 @@ import argparse
 import hashlib
 import json
 import random
+import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
+DATASET_DIR = Path(__file__).resolve().parents[1]
+if str(DATASET_DIR) not in sys.path:
+    sys.path.insert(0, str(DATASET_DIR))
+
 from utils.util_progress import progress_bar, progress_write
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 API_ROOT = "https://api.polyhaven.com"
 DEFAULT_CATEGORIES = ["concrete", "plaster-concrete", "wood", "tiles", "brick"]
 DEFAULT_MAPS = {

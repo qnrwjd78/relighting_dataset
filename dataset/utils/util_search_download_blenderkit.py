@@ -51,6 +51,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preview-height", type=int, default=704)
     parser.add_argument("--preview-samples", type=int, default=32)
     parser.add_argument("--preview-engine", choices=["current", "eevee", "cycles", "workbench"], default="current")
+    parser.add_argument("--hdri-manifest", default=None, help="Optional HDRI manifest for generated previews.")
+    parser.add_argument("--hdri-strength", type=float, default=1.0)
+    parser.add_argument("--hdri-seed", type=int, default=0)
     parser.add_argument("--skip-existing-index", action="store_true", help="Skip assets already present in --index-json.")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT)
     return parser.parse_args()
@@ -248,6 +251,10 @@ def curate_one(record: dict, args: argparse.Namespace) -> None:
         "--engine",
         args.preview_engine,
     ]
+    if args.hdri_manifest:
+        cmd.extend(["--hdri-manifest", args.hdri_manifest])
+        cmd.extend(["--hdri-strength", str(args.hdri_strength)])
+        cmd.extend(["--hdri-seed", str(args.hdri_seed)])
     subprocess.run(cmd, cwd=ROOT, check=True)
 
 

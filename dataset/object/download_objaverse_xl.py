@@ -8,9 +8,13 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
+DATASET_DIR = Path(__file__).resolve().parents[1]
+if str(DATASET_DIR) not in sys.path:
+    sys.path.insert(0, str(DATASET_DIR))
+
 from utils.util_progress import progress_bar, progress_write
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def parse_args() -> argparse.Namespace:

@@ -31,6 +31,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=704)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument("--engine", choices=["current", "eevee", "cycles", "workbench"], default="current")
+    parser.add_argument("--hdri-manifest", default=None)
+    parser.add_argument("--hdri-strength", type=float, default=1.0)
+    parser.add_argument("--hdri-seed", type=int, default=0)
     parser.add_argument("--keep-blend", action="store_true")
     return parser.parse_args()
 
@@ -106,6 +109,9 @@ def run_preview(
     height: int,
     samples: int,
     engine: str,
+    hdri_manifest: str | None,
+    hdri_strength: float,
+    hdri_seed: int,
 ) -> None:
     script_path = ROOT / "dataset" / "utils" / "util_render_background_preview.py"
     cmd = shlex.split(blender_cmd) + [
@@ -128,6 +134,10 @@ def run_preview(
         "--engine",
         engine,
     ]
+    if hdri_manifest:
+        cmd.extend(["--hdri-manifest", hdri_manifest])
+        cmd.extend(["--hdri-strength", str(hdri_strength)])
+        cmd.extend(["--hdri-seed", str(hdri_seed)])
     subprocess.run(cmd, cwd=ROOT, check=True)
 
 
@@ -175,6 +185,9 @@ def curate_records(args: argparse.Namespace) -> list[dict]:
                 args.height,
                 args.samples,
                 args.engine,
+                args.hdri_manifest,
+                args.hdri_strength,
+                args.hdri_seed,
             )
             metadata = json.loads(metadata_path.read_text(encoding="utf-8")) if metadata_path.exists() else {}
             item = {
@@ -197,6 +210,8 @@ def curate_records(args: argparse.Namespace) -> list[dict]:
                 "lights": metadata.get("lights", []),
                 "bbox_min": metadata.get("bbox_min"),
                 "bbox_max": metadata.get("bbox_max"),
+                "hdri": metadata.get("hdri"),
+                "hdri_strength": metadata.get("hdri_strength"),
                 "subject_candidates": metadata.get("subject_candidates", []),
                 "record": record,
             }

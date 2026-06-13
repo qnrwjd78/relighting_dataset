@@ -89,15 +89,23 @@ class TokenLightComponentDataset:
     def _sample_spatial(self, scene_dir: Path, meta: dict, rng: random.Random):
         spatial = meta["spatial"]
         ambient = read_exr(scene_dir / spatial["ambient_render"])
-        lights = spatial["point_lights"]
+        lights = [
+            light
+            for light in spatial["point_lights"]
+            if light.get("valid", True) and light.get("render")
+        ]
+        if not lights:
+            raise RuntimeError(f"No valid spatial point lights in {scene_dir}")
         selected = rng.sample(lights, k=min(rng.randint(1, max(1, self.max_lights)), len(lights)))
         ambient_scale = rng.uniform(0.25, 1.15)
         target_linear = ambient_scale * ambient
         condition_lights = []
+        intensity_range = spatial.get("intensity_range", [0.15, 1.25])
+        intensity_lo, intensity_hi = float(intensity_range[0]), float(intensity_range[1])
         for light in selected:
             contrib = read_exr(scene_dir / light["render"])
             color = sample_color(rng)
-            intensity = rng.uniform(0.15, 1.25)
+            intensity = rng.uniform(intensity_lo, intensity_hi)
             target_linear += intensity * contrib * color.reshape(1, 1, 3)
             condition_lights.append(
                 {
@@ -105,6 +113,7 @@ class TokenLightComponentDataset:
                     "color": color.tolist(),
                     "intensity": intensity,
                     "radius": light.get("canonical_radius"),
+                    "base_energy": light.get("canonical_energy"),
                 }
             )
         return reinhard(ambient), reinhard(target_linear), {"task": "spatial", "ambient_scale": ambient_scale, "lights": condition_lights}

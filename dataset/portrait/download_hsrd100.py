@@ -11,6 +11,10 @@ from urllib.parse import quote
 
 import requests
 
+DATASET_DIR = Path(__file__).resolve().parents[1]
+if str(DATASET_DIR) not in sys.path:
+    sys.path.insert(0, str(DATASET_DIR))
+
 from utils.util_progress import progress_bar, progress_write
 
 
@@ -121,7 +125,7 @@ def find_primary_obj(extract_dir: Path) -> Path | None:
 
 def main() -> int:
     args = parse_args()
-    repo_root = Path(__file__).resolve().parents[1]
+    repo_root = Path(__file__).resolve().parents[2]
     out_dir = (repo_root / args.out_dir).resolve() if not Path(args.out_dir).is_absolute() else Path(args.out_dir)
     preview_root = repo_root / "outputs" / "previews" / "hsrd100"
     manifest = Path(args.manifest) if args.manifest else preview_root / f"hsrd100_{args.lod.lower()}_objects.txt"
