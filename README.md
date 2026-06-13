@@ -21,6 +21,7 @@ Download bulk datasets into `data/{dataset}`:
 
 ```bash
 python3 dataset/download_polyhaven_hdri.py --resolution 2k --format hdr --per-category 30
+python3 dataset/download_polyhaven_textures.py --resolution 2k --format jpg --per-category 20
 python3 dataset/download_objaverse_xl.py --limit 5000
 python3 dataset/download_hsrd100.py --lod LOD1 --extract
 ```
@@ -95,7 +96,7 @@ tone_mapped = linear / (1 + linear)
 png = tone_mapped ** (1 / 2.2)
 ```
 
-`--hdri-mode` can be `on`, `off`, or `random`. HDRI is applied to ambient renders; point-light components stay black-world contribution renders for clean additive composition.
+`--hdri-mode` can be `on`, `off`, or `random`. HDRI is applied to ambient renders. Receiver floor/wall materials use downloaded Poly Haven PBR textures when `receiver_texture_manifest` exists, otherwise procedural materials are used.
 
 ## Output
 

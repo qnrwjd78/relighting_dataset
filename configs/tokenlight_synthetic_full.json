@@ -2,6 +2,7 @@
   "output_root": "outputs/tokenlight_synthetic_1280",
   "object_manifest": "outputs/previews/objaverse_xl/objaverse_xl_objects.txt",
   "hdri_manifest": "outputs/previews/polyhaven_hdri/polyhaven_hdri_hdris.txt",
+  "receiver_texture_manifest": "outputs/previews/polyhaven_textures/polyhaven_textures.json",
   "fixture_scene_manifest": "manifests/fixture_scenes.jsonl",
   "scene_count": 5000,
   "seed": 20260524,
@@ -48,6 +49,16 @@
     "cyclorama_radius_range": [0.55, 1.0],
     "randomize_receiver_material": true,
     "receiver_material_families": ["matte_neutral", "matte_tinted", "subtle_noise", "subtle_checker", "slightly_glossy_floor"],
+    "floor_material_families": ["matte_concrete", "glossy_concrete", "wood", "tile", "subtle_checker", "painted"],
+    "wall_material_families": ["matte_plaster", "painted_wall", "subtle_noise", "large_panels", "concrete"],
+    "receiver_texture_strength_range": [0.05, 0.22],
+    "receiver_bump_strength_range": [0.0, 0.035],
+    "receiver_texture_probability": 0.6,
+    "wall_texture_probability": 0.0,
+    "floor_texture_categories": ["concrete", "plaster-concrete", "wood", "tiles", "brick"],
+    "wall_texture_categories": ["plaster", "plaster-concrete", "concrete", "brick"],
+    "receiver_texture_scale_range": [1.5, 6.0],
+    "receiver_texture_normal_strength_range": [0.08, 0.35],
     "floor_glossy_probability": 0.2
   },
   "ambient": {
@@ -77,7 +88,11 @@
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "fixed_radius": 0.06,
-    "color": [1.0, 1.0, 1.0]
+    "color": [1.0, 1.0, 1.0],
+    "color_range": [[0.1, 0.1, 0.1], [1.0, 1.0, 1.0]],
+    "intensity_range": [0.25, 2.0],
+    "radius_range": [0.02, 0.25],
+    "include_hdri_in_point_lights": true
   },
   "diffuse": {
     "enabled": true,

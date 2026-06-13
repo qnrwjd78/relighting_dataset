@@ -80,6 +80,36 @@ def load_path_lines(path: Path, root: Path) -> list[str]:
     return paths
 
 
+def load_receiver_texture_manifest(path: Path, root: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    data = load_json(path)
+    rows = data.get("textures", data) if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return []
+
+    textures = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        maps = row.get("maps", {})
+        resolved_maps = {}
+        for map_name, info in maps.items():
+            if isinstance(info, dict):
+                path_value = info.get("path")
+                if path_value:
+                    map_info = dict(info)
+                    map_info["path"] = str(resolve_path(root, path_value))
+                    resolved_maps[map_name] = map_info
+            elif isinstance(info, str):
+                resolved_maps[map_name] = {"path": str(resolve_path(root, info))}
+        if resolved_maps.get("albedo"):
+            tex = dict(row)
+            tex["maps"] = resolved_maps
+            textures.append(tex)
+    return textures
+
+
 def load_jsonl(path: Path) -> list[dict]:
     if not path.exists():
         return []
@@ -223,6 +253,294 @@ def random_material(rng: random.Random, family_names: list[str]) -> bpy.types.Ma
     if family == "plastic":
         return make_principled_mat("tl_rand_plastic", color, roughness=rng.uniform(0.28, 0.62), metallic=0.0)
     return make_principled_mat("tl_rand_matte", color, roughness=rng.uniform(0.62, 0.95), metallic=0.0)
+
+
+def clamp_color(color: tuple[float, float, float]) -> tuple[float, float, float]:
+    return tuple(max(0.0, min(1.0, float(channel))) for channel in color)
+
+
+def mix_color(a: tuple[float, float, float], b: tuple[float, float, float], t: float) -> tuple[float, float, float]:
+    t = max(0.0, min(1.0, float(t)))
+    return (
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    )
+
+
+def jitter_color(
+    rng: random.Random,
+    color: tuple[float, float, float],
+    strength: float,
+) -> tuple[float, float, float]:
+    return clamp_color(tuple(channel * rng.uniform(1.0 - strength, 1.0 + strength) for channel in color))
+
+
+def muted_receiver_color(rng: random.Random, value_range: tuple[float, float] = (0.38, 0.78)) -> tuple[float, float, float]:
+    hue = rng.random()
+    saturation = rng.uniform(0.02, 0.24)
+    value = rng.uniform(*value_range)
+    return hsv_to_rgb(hue, saturation, value)
+
+
+def get_principled_bsdf(mat: bpy.types.Material):
+    if not mat.use_nodes:
+        mat.use_nodes = True
+    return mat.node_tree.nodes.get("Principled BSDF")
+
+
+def make_receiver_principled_mat(
+    name: str,
+    color: tuple[float, float, float],
+    roughness: float,
+    specular: float,
+) -> bpy.types.Material:
+    mat = make_principled_mat(name, clamp_color(color), roughness=roughness, metallic=0.0)
+    bsdf = get_principled_bsdf(mat)
+    if bsdf:
+        set_input(bsdf, "Specular IOR Level", specular)
+        set_input(bsdf, "Specular", specular)
+    return mat
+
+
+def add_color_ramp_texture(
+    mat: bpy.types.Material,
+    bsdf,
+    factor_socket,
+    color_a: tuple[float, float, float],
+    color_b: tuple[float, float, float],
+) -> None:
+    ramp = mat.node_tree.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].position = 0.18
+    ramp.color_ramp.elements[0].color = (*clamp_color(color_a), 1.0)
+    ramp.color_ramp.elements[1].position = 1.0
+    ramp.color_ramp.elements[1].color = (*clamp_color(color_b), 1.0)
+    mat.node_tree.links.new(factor_socket, ramp.inputs["Fac"])
+    mat.node_tree.links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+
+
+def add_noise_base_color(
+    mat: bpy.types.Material,
+    rng: random.Random,
+    bsdf,
+    color: tuple[float, float, float],
+    texture_strength: float,
+    scale_range: tuple[float, float],
+    detail: float = 8.0,
+) -> None:
+    noise = mat.node_tree.nodes.new("ShaderNodeTexNoise")
+    set_input(noise, "Scale", rng.uniform(*scale_range))
+    set_input(noise, "Detail", detail)
+    set_input(noise, "Roughness", rng.uniform(0.48, 0.68))
+    color_a = mix_color(color, (0.0, 0.0, 0.0), texture_strength)
+    color_b = mix_color(color, (1.0, 1.0, 1.0), texture_strength)
+    add_color_ramp_texture(mat, bsdf, noise.outputs["Fac"], color_a, color_b)
+
+
+def add_checker_base_color(
+    mat: bpy.types.Material,
+    rng: random.Random,
+    bsdf,
+    color: tuple[float, float, float],
+    texture_strength: float,
+    scale_range: tuple[float, float],
+) -> None:
+    checker = mat.node_tree.nodes.new("ShaderNodeTexChecker")
+    set_input(checker, "Scale", rng.uniform(*scale_range))
+    color_a = mix_color(color, (0.0, 0.0, 0.0), texture_strength)
+    color_b = mix_color(color, (1.0, 1.0, 1.0), texture_strength)
+    set_input(checker, "Color1", (*clamp_color(color_a), 1.0))
+    set_input(checker, "Color2", (*clamp_color(color_b), 1.0))
+    mat.node_tree.links.new(checker.outputs["Color"], bsdf.inputs["Base Color"])
+
+
+def add_wave_base_color(
+    mat: bpy.types.Material,
+    rng: random.Random,
+    bsdf,
+    color_a: tuple[float, float, float],
+    color_b: tuple[float, float, float],
+    scale_range: tuple[float, float],
+) -> None:
+    wave = mat.node_tree.nodes.new("ShaderNodeTexWave")
+    set_input(wave, "Scale", rng.uniform(*scale_range))
+    set_input(wave, "Distortion", rng.uniform(4.0, 12.0))
+    factor = wave.outputs["Fac"] if "Fac" in wave.outputs else wave.outputs["Color"]
+    add_color_ramp_texture(mat, bsdf, factor, color_a, color_b)
+
+
+def add_brick_base_color(
+    mat: bpy.types.Material,
+    rng: random.Random,
+    bsdf,
+    color: tuple[float, float, float],
+    texture_strength: float,
+    scale_range: tuple[float, float],
+) -> None:
+    brick = mat.node_tree.nodes.new("ShaderNodeTexBrick")
+    set_input(brick, "Scale", rng.uniform(*scale_range))
+    set_input(brick, "Mortar Size", rng.uniform(0.012, 0.045))
+    set_input(brick, "Color1", (*clamp_color(mix_color(color, (0.0, 0.0, 0.0), texture_strength)), 1.0))
+    set_input(brick, "Color2", (*clamp_color(mix_color(color, (1.0, 1.0, 1.0), texture_strength)), 1.0))
+    set_input(brick, "Mortar", (*clamp_color(mix_color(color, (0.1, 0.1, 0.1), texture_strength * 1.3)), 1.0))
+    mat.node_tree.links.new(brick.outputs["Color"], bsdf.inputs["Base Color"])
+
+
+def add_noise_bump(
+    mat: bpy.types.Material,
+    rng: random.Random,
+    bsdf,
+    bump_strength: float,
+    scale_range: tuple[float, float],
+) -> None:
+    if bump_strength <= 0.0:
+        return
+    noise = mat.node_tree.nodes.new("ShaderNodeTexNoise")
+    set_input(noise, "Scale", rng.uniform(*scale_range))
+    set_input(noise, "Detail", rng.uniform(3.0, 10.0))
+    bump = mat.node_tree.nodes.new("ShaderNodeBump")
+    set_input(bump, "Strength", bump_strength)
+    set_input(bump, "Distance", rng.uniform(0.02, 0.08))
+    mat.node_tree.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    mat.node_tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+
+
+def set_image_colorspace(image: bpy.types.Image, colorspace: str) -> None:
+    try:
+        image.colorspace_settings.name = colorspace
+    except Exception:
+        pass
+
+
+def texture_categories(entry: dict) -> set[str]:
+    categories = set()
+    for key in ("download_category", "category"):
+        value = entry.get(key)
+        if value:
+            categories.add(str(value).lower())
+    for value in entry.get("asset_categories", entry.get("categories", [])) or []:
+        categories.add(str(value).lower())
+    return categories
+
+
+def choose_receiver_texture(config: dict, rng: random.Random, role: str) -> dict | None:
+    layout = config["layout"]
+    textures = config.get("_runtime", {}).get("receiver_textures", [])
+    if not textures:
+        return None
+
+    probability = float(layout.get(f"{role}_texture_probability", layout.get("receiver_texture_probability", 0.75)))
+    if rng.random() >= probability:
+        return None
+
+    allowed = {str(c).lower() for c in layout.get(f"{role}_texture_categories", [])}
+    candidates = textures
+    if allowed:
+        candidates = [entry for entry in textures if texture_categories(entry) & allowed]
+    if not candidates:
+        candidates = textures
+    return rng.choice(candidates) if candidates else None
+
+
+def make_image_texture_node(
+    mat: bpy.types.Material,
+    map_info: dict,
+    colorspace: str,
+    vector_socket,
+):
+    image_path = map_info.get("path")
+    if not image_path or not Path(image_path).exists():
+        return None
+    tex = mat.node_tree.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(str(image_path), check_existing=True)
+    set_image_colorspace(tex.image, colorspace)
+    mat.node_tree.links.new(vector_socket, tex.inputs["Vector"])
+    return tex
+
+
+def set_receiver_material_meta(
+    mat: bpy.types.Material,
+    source: str,
+    family: str,
+    texture_entry: dict | None = None,
+    texture_scale: float | None = None,
+) -> None:
+    mat["tl_receiver_source"] = source
+    mat["tl_receiver_family"] = family
+    if texture_entry:
+        maps = {
+            name: info.get("path")
+            for name, info in texture_entry.get("maps", {}).items()
+            if isinstance(info, dict) and info.get("path")
+        }
+        mat["tl_receiver_texture"] = json.dumps(
+            {
+                "id": texture_entry.get("id"),
+                "name": texture_entry.get("name"),
+                "download_category": texture_entry.get("download_category"),
+                "asset_categories": texture_entry.get("asset_categories", []),
+                "scale": texture_scale,
+                "maps": maps,
+            },
+            ensure_ascii=False,
+        )
+
+
+def make_receiver_texture_material(
+    name: str,
+    texture_entry: dict,
+    rng: random.Random,
+    config: dict,
+    role: str,
+) -> bpy.types.Material | None:
+    maps = texture_entry.get("maps", {})
+    albedo = maps.get("albedo")
+    albedo_path = albedo.get("path") if isinstance(albedo, dict) else None
+    if not albedo_path or not Path(albedo_path).exists():
+        return None
+
+    layout = config["layout"]
+    scale = sample_range(layout.get("receiver_texture_scale_range"), 3.0, rng)
+    normal_strength = sample_range(layout.get("receiver_texture_normal_strength_range"), 0.28, rng)
+    roughness_fallback = rng.uniform(0.45, 0.9) if role == "floor" else rng.uniform(0.68, 0.96)
+    specular = rng.uniform(0.12, 0.42) if role == "floor" else rng.uniform(0.04, 0.22)
+    mat = make_receiver_principled_mat(name, (0.65, 0.65, 0.65), roughness=roughness_fallback, specular=specular)
+    bsdf = get_principled_bsdf(mat)
+    if not bsdf:
+        return None
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    texcoord = nodes.new("ShaderNodeTexCoord")
+    mapping = nodes.new("ShaderNodeMapping")
+    set_input(mapping, "Scale", (scale, scale, 1.0))
+    set_input(mapping, "Rotation", (0.0, 0.0, rng.random() * math.tau))
+    links.new(texcoord.outputs["UV"], mapping.inputs["Vector"])
+
+    albedo_tex = make_image_texture_node(mat, albedo, "sRGB", mapping.outputs["Vector"])
+    if not albedo_tex:
+        return None
+    links.new(albedo_tex.outputs["Color"], bsdf.inputs["Base Color"])
+
+    roughness = maps.get("roughness")
+    if isinstance(roughness, dict):
+        roughness_tex = make_image_texture_node(mat, roughness, "Non-Color", mapping.outputs["Vector"])
+        if roughness_tex:
+            roughness_bw = nodes.new("ShaderNodeRGBToBW")
+            links.new(roughness_tex.outputs["Color"], roughness_bw.inputs["Color"])
+            links.new(roughness_bw.outputs["Val"], bsdf.inputs["Roughness"])
+
+    normal = maps.get("normal")
+    if isinstance(normal, dict) and normal_strength > 0.0:
+        normal_tex = make_image_texture_node(mat, normal, "Non-Color", mapping.outputs["Vector"])
+        if normal_tex:
+            normal_map = nodes.new("ShaderNodeNormalMap")
+            set_input(normal_map, "Strength", normal_strength)
+            links.new(normal_tex.outputs["Color"], normal_map.inputs["Color"])
+            links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+
+    set_receiver_material_meta(mat, "polyhaven_texture", role, texture_entry, scale)
+    return mat
 
 
 def hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
@@ -395,6 +713,10 @@ def create_oriented_quad(
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata([center - u - v, center + u - v, center + u + v, center - u + v], [], [(0, 1, 2, 3)])
     mesh.update()
+    uv_layer = mesh.uv_layers.new(name="TL_UV")
+    for poly in mesh.polygons:
+        for loop_index, uv in zip(poly.loop_indices, ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))):
+            uv_layer.data[loop_index].uv = uv
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
     return obj
@@ -451,6 +773,24 @@ def receiver_bounds_to_meta(bounds: dict) -> dict:
     }
 
 
+def receiver_material_to_meta(obj: bpy.types.Object, role: str) -> dict:
+    mat = obj.data.materials[0] if obj.type == "MESH" and obj.data.materials else None
+    meta = {
+        "object": obj.name,
+        "role": role,
+        "material": mat.name if mat else None,
+        "source": mat.get("tl_receiver_source") if mat else None,
+        "family": mat.get("tl_receiver_family") if mat else None,
+    }
+    texture_json = mat.get("tl_receiver_texture") if mat else None
+    if texture_json:
+        try:
+            meta["texture"] = json.loads(texture_json)
+        except json.JSONDecodeError:
+            meta["texture"] = texture_json
+    return meta
+
+
 def point_inside_receiver_bounds(point: Vector, bounds: dict | None, radius: float, margin: float = 0.02) -> tuple[bool, str | None]:
     if not bounds:
         return True, None
@@ -475,6 +815,7 @@ def point_inside_receiver_bounds(point: Vector, bounds: dict | None, radius: flo
 def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> list[bpy.types.Object]:
     layout = config["layout"]
     receivers: list[bpy.types.Object] = []
+    receiver_roles: dict[str, str] = {}
     right, forward = horizontal_camera_axes(camera)
     origin = Vector((center.x, center.y, 0.0))
     room_width = max(sample_range(layout.get("ground_size_range"), float(layout.get("ground_size", 10.0)), rng), 24.0)
@@ -493,8 +834,9 @@ def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object,
             width=room_width,
             height=depth,
         )
-        ground.data.materials.append(receiver_material("tl_ground_mat", rng, config))
+        ground.data.materials.append(floor_material("tl_ground_mat", rng, config))
         receivers.append(ground)
+        receiver_roles[ground.name] = "floor"
 
     if rng.random() < float(layout.get("wall_probability", 1.0)):
         back_wall = create_oriented_quad(
@@ -505,8 +847,9 @@ def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object,
             width=room_width,
             height=wall_height,
         )
-        back_wall.data.materials.append(receiver_material("TL_BackWall_mat", rng, config))
+        back_wall.data.materials.append(wall_material("TL_BackWall_mat", rng, config))
         receivers.append(back_wall)
+        receiver_roles[back_wall.name] = "wall"
 
         for side_name, side_sign in (("TL_LeftWall", -1.0), ("TL_RightWall", 1.0)):
             side_wall = create_oriented_quad(
@@ -517,11 +860,16 @@ def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object,
                 width=depth,
                 height=wall_height,
             )
-            side_wall.data.materials.append(receiver_material(f"{side_name}_mat", rng, config))
+            side_wall.data.materials.append(wall_material(f"{side_name}_mat", rng, config))
             receivers.append(side_wall)
+            receiver_roles[side_wall.name] = "wall"
 
     tag_objects(receivers, "TL_RECEIVER")
     kept = remove_camera_invisible_walls(receivers, camera)
+    config["_runtime"]["receiver_materials"] = [
+        receiver_material_to_meta(obj, receiver_roles.get(obj.name, "receiver"))
+        for obj in kept
+    ]
     config["_runtime"]["receiver_bounds"] = {
         "origin": origin,
         "right": right,
@@ -536,13 +884,168 @@ def create_receivers(config: dict, rng: random.Random, camera: bpy.types.Object,
     return kept
 
 
+def receiver_texture_ranges(config: dict, rng: random.Random) -> tuple[float, float]:
+    layout = config["layout"]
+    texture_strength = sample_range(layout.get("receiver_texture_strength_range"), 0.14, rng)
+    bump_strength = sample_range(layout.get("receiver_bump_strength_range"), 0.018, rng)
+    return max(0.0, texture_strength), max(0.0, bump_strength)
+
+
+def floor_material(name: str, rng: random.Random, config: dict) -> bpy.types.Material:
+    layout = config["layout"]
+    if not layout.get("randomize_receiver_material", True):
+        mat = make_receiver_principled_mat(name, (0.55, 0.55, 0.55), roughness=0.75, specular=0.25)
+        set_receiver_material_meta(mat, "procedural", "matte_neutral")
+        return mat
+
+    texture_entry = choose_receiver_texture(config, rng, "floor")
+    if texture_entry:
+        texture_mat = make_receiver_texture_material(name, texture_entry, rng, config, "floor")
+        if texture_mat:
+            return texture_mat
+
+    families = layout.get(
+        "floor_material_families",
+        ["matte_concrete", "glossy_concrete", "wood", "tile", "subtle_checker", "painted"],
+    )
+    family = rng.choice(families or ["matte_concrete"])
+    texture_strength, bump_strength = receiver_texture_ranges(config, rng)
+
+    if family == "glossy_concrete":
+        color = muted_receiver_color(rng, (0.34, 0.62))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.24, 0.52), specular=rng.uniform(0.35, 0.62))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_noise_base_color(mat, rng, bsdf, color, texture_strength, (8.0, 36.0), detail=10.0)
+            add_noise_bump(mat, rng, bsdf, bump_strength * 0.7, (18.0, 55.0))
+        return mat
+
+    if family == "wood":
+        base = hsv_to_rgb(rng.uniform(0.065, 0.13), rng.uniform(0.18, 0.42), rng.uniform(0.34, 0.62))
+        grain = jitter_color(rng, mix_color(base, (0.95, 0.78, 0.45), 0.28), 0.12)
+        mat = make_receiver_principled_mat(name, base, roughness=rng.uniform(0.38, 0.72), specular=rng.uniform(0.22, 0.45))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_wave_base_color(mat, rng, bsdf, base, grain, (6.0, 18.0))
+            add_noise_bump(mat, rng, bsdf, bump_strength, (18.0, 70.0))
+        return mat
+
+    if family == "tile":
+        color = muted_receiver_color(rng, (0.42, 0.78))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.34, 0.78), specular=rng.uniform(0.18, 0.46))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_brick_base_color(mat, rng, bsdf, color, texture_strength, (4.0, 12.0))
+            add_noise_bump(mat, rng, bsdf, bump_strength * 0.55, (25.0, 80.0))
+        return mat
+
+    if family == "subtle_checker":
+        color = muted_receiver_color(rng, (0.42, 0.72))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.48, 0.86), specular=rng.uniform(0.16, 0.36))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_checker_base_color(mat, rng, bsdf, color, texture_strength * 0.75, (3.0, 10.0))
+            add_noise_bump(mat, rng, bsdf, bump_strength * 0.5, (20.0, 60.0))
+        return mat
+
+    if family == "painted":
+        color = muted_receiver_color(rng, (0.40, 0.78))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.42, 0.84), specular=rng.uniform(0.12, 0.35))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_noise_base_color(mat, rng, bsdf, color, texture_strength * 0.7, (5.0, 18.0), detail=5.0)
+            add_noise_bump(mat, rng, bsdf, bump_strength * 0.45, (16.0, 42.0))
+        return mat
+
+    color = muted_receiver_color(rng, (0.36, 0.68))
+    mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.62, 0.94), specular=rng.uniform(0.08, 0.28))
+    set_receiver_material_meta(mat, "procedural", family)
+    bsdf = get_principled_bsdf(mat)
+    if bsdf:
+        add_noise_base_color(mat, rng, bsdf, color, texture_strength, (10.0, 42.0), detail=9.0)
+        add_noise_bump(mat, rng, bsdf, bump_strength, (18.0, 65.0))
+    return mat
+
+
+def wall_material(name: str, rng: random.Random, config: dict) -> bpy.types.Material:
+    layout = config["layout"]
+    if not layout.get("randomize_receiver_material", True):
+        mat = make_receiver_principled_mat(name, (0.58, 0.58, 0.58), roughness=0.86, specular=0.18)
+        set_receiver_material_meta(mat, "procedural", "matte_neutral")
+        return mat
+
+    texture_entry = choose_receiver_texture(config, rng, "wall")
+    if texture_entry:
+        texture_mat = make_receiver_texture_material(name, texture_entry, rng, config, "wall")
+        if texture_mat:
+            return texture_mat
+
+    families = layout.get(
+        "wall_material_families",
+        ["matte_plaster", "painted_wall", "subtle_noise", "large_panels", "concrete"],
+    )
+    family = rng.choice(families or ["matte_plaster"])
+    texture_strength, bump_strength = receiver_texture_ranges(config, rng)
+    wall_texture_strength = texture_strength * 0.65
+    wall_bump_strength = bump_strength * 0.55
+
+    if family == "large_panels":
+        color = muted_receiver_color(rng, (0.52, 0.84))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.68, 0.94), specular=rng.uniform(0.08, 0.24))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_checker_base_color(mat, rng, bsdf, color, wall_texture_strength, (1.0, 3.2))
+            add_noise_bump(mat, rng, bsdf, wall_bump_strength * 0.35, (10.0, 32.0))
+        return mat
+
+    if family == "concrete":
+        color = muted_receiver_color(rng, (0.38, 0.70))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.74, 0.96), specular=rng.uniform(0.06, 0.22))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_noise_base_color(mat, rng, bsdf, color, wall_texture_strength, (12.0, 46.0), detail=10.0)
+            add_noise_bump(mat, rng, bsdf, wall_bump_strength, (18.0, 75.0))
+        return mat
+
+    if family == "subtle_noise":
+        color = muted_receiver_color(rng, (0.50, 0.86))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.70, 0.98), specular=rng.uniform(0.05, 0.20))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_noise_base_color(mat, rng, bsdf, color, wall_texture_strength, (5.0, 24.0), detail=6.0)
+            add_noise_bump(mat, rng, bsdf, wall_bump_strength * 0.45, (16.0, 48.0))
+        return mat
+
+    if family == "painted_wall":
+        color = muted_receiver_color(rng, (0.55, 0.90))
+        mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.62, 0.92), specular=rng.uniform(0.08, 0.26))
+        set_receiver_material_meta(mat, "procedural", family)
+        bsdf = get_principled_bsdf(mat)
+        if bsdf:
+            add_noise_base_color(mat, rng, bsdf, color, wall_texture_strength * 0.55, (3.0, 12.0), detail=4.0)
+            add_noise_bump(mat, rng, bsdf, wall_bump_strength * 0.3, (12.0, 34.0))
+        return mat
+
+    color = muted_receiver_color(rng, (0.54, 0.88))
+    mat = make_receiver_principled_mat(name, color, roughness=rng.uniform(0.76, 0.98), specular=rng.uniform(0.04, 0.18))
+    set_receiver_material_meta(mat, "procedural", family)
+    bsdf = get_principled_bsdf(mat)
+    if bsdf:
+        add_noise_base_color(mat, rng, bsdf, color, wall_texture_strength * 0.7, (7.0, 28.0), detail=7.0)
+        add_noise_bump(mat, rng, bsdf, wall_bump_strength * 0.5, (16.0, 50.0))
+    return mat
+
+
 def receiver_material(name: str, rng: random.Random, config: dict) -> bpy.types.Material:
-    if config["layout"].get("randomize_receiver_material", True):
-        v = rng.uniform(0.34, 0.72)
-        color = (v * rng.uniform(0.85, 1.15), v * rng.uniform(0.85, 1.15), v * rng.uniform(0.85, 1.15))
-    else:
-        color = (0.55, 0.55, 0.55)
-    return make_principled_mat(name, color, roughness=rng.uniform(0.55, 0.92), metallic=0.0)
+    return floor_material(name, rng, config)
 
 
 def create_wall(name: str, y: float, config: dict, rng: random.Random) -> bpy.types.Object:
@@ -554,7 +1057,7 @@ def create_wall(name: str, y: float, config: dict, rng: random.Random) -> bpy.ty
     wall.name = name
     wall.scale = (size * 0.5, height * 0.5, 1.0)
     wall.rotation_euler[0] = math.radians(90)
-    wall.data.materials.append(receiver_material(f"{name}_mat", rng, config))
+    wall.data.materials.append(wall_material(f"{name}_mat", rng, config))
     return wall
 
 
@@ -781,6 +1284,40 @@ def create_area_light(name: str, location: Vector, target: Vector, energy: float
     return obj
 
 
+def random_float_range(rng: random.Random, value: list[float] | tuple[float, ...] | None, fallback: float) -> tuple[float, float]:
+    if value is None or len(value) < 2:
+        return fallback, fallback
+    return float(value[0]), float(value[1])
+
+
+def sample_spatial_light_color(spatial: dict, rng: random.Random) -> list[float]:
+    color_range = spatial.get("color_range")
+    if color_range and len(color_range) >= 2:
+        lo, hi = color_range[0], color_range[1]
+        if not isinstance(lo, (list, tuple)):
+            lo = [float(lo)] * 3
+        if not isinstance(hi, (list, tuple)):
+            hi = [float(hi)] * 3
+        return [rng.uniform(float(lo[i]), float(hi[i])) for i in range(3)]
+    color = spatial.get("color", [1.0, 1.0, 1.0])
+    return [float(color[0]), float(color[1]), float(color[2])]
+
+
+def sample_spatial_light_settings(spatial: dict, rng: random.Random) -> dict:
+    base_energy = float(spatial.get("base_energy", 500.0))
+    intensity_lo, intensity_hi = random_float_range(rng, spatial.get("intensity_range"), 1.0)
+    radius_lo, radius_hi = random_float_range(rng, spatial.get("radius_range"), float(spatial.get("fixed_radius", 0.06)))
+    intensity_scalar = rng.uniform(intensity_lo, intensity_hi)
+    radius = rng.uniform(radius_lo, radius_hi)
+    return {
+        "color": sample_spatial_light_color(spatial, rng),
+        "intensity_scalar": intensity_scalar,
+        "base_energy": base_energy,
+        "energy": base_energy * intensity_scalar,
+        "radius": radius,
+    }
+
+
 def render_exr(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     scene = bpy.context.scene
@@ -887,6 +1424,18 @@ def copy_component(scene_dir: Path, src_base: str, dst_base: str, config: dict) 
         shutil.copyfile(src, dst)
         result[fmt] = f"{dst_base}.{fmt}"
     return result
+
+
+def write_component_preview_png(scene_dir: Path, output: dict, preview_rel: str, config: dict) -> str:
+    preview_path = scene_dir / preview_rel
+    preview_path.parent.mkdir(parents=True, exist_ok=True)
+    if output.get("png"):
+        shutil.copyfile(scene_dir / output["png"], preview_path)
+        return preview_rel
+    if output.get("exr"):
+        tonemap_exr_to_png(scene_dir / output["exr"], preview_path, float(config.get("render", {}).get("component_png_gamma", 2.2)))
+        return preview_rel
+    raise RuntimeError(f"Cannot write preview PNG for component output: {output}")
 
 
 def component_meta(output: dict) -> dict:
@@ -1322,43 +1871,47 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     ambient_output = render_component(scene_dir, "spatial/ambient", config)
     ambient_render = ambient_output["primary"]
     ambient_png = f"../preview/{scene_dir.name}_ambient.png"
-    render_png(scene_dir / ambient_png)
+    write_component_preview_png(scene_dir, ambient_output, ambient_png, config)
     positions = sample_spatial_positions(config, rng)
     light_position_preview = None
     if config.get("_light_preview", False):
         light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, center)
     pbr_maps = render_pbr_maps(scene_dir, config) if config.get("_render_pbr", False) else None
 
-    set_black_world()
     lights_meta = []
     spatial = config["spatial"]
-    radius = float(spatial.get("fixed_radius", 0.06))
+    include_hdri_in_point_lights = bool(spatial.get("include_hdri_in_point_lights", False))
+    if not include_hdri_in_point_lights:
+        set_black_world()
     receiver_bounds = config["_runtime"].get("receiver_bounds")
-    invalid_black_source: str | None = None
+    receiver_materials = config["_runtime"].get("receiver_materials", [])
+    invalid_reference_source: str | None = "spatial/ambient" if include_hdri_in_point_lights else None
     with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
         for light_index, p_can in enumerate(pbar):
             pbar.set_postfix(light=f"{light_index:03d}")
             p_world = canonical_to_world(p_can, camera, config, center)
             rel_base = f"spatial/point_lights/light_{light_index:03d}"
+            light_settings = sample_spatial_light_settings(spatial, rng)
+            radius = float(light_settings["radius"])
             valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, radius)
             copied_from = None
             if valid:
                 light = create_point_light(
                     f"TL_Point_{light_index:03d}",
                     p_world,
-                    float(spatial.get("base_energy", 500.0)),
+                    float(light_settings["energy"]),
                     radius,
-                    spatial.get("color", [1.0, 1.0, 1.0]),
+                    light_settings["color"],
                 )
                 light_output = render_component(scene_dir, rel_base, config)
                 bpy.data.objects.remove(light, do_unlink=True)
             else:
-                if invalid_black_source is None:
+                if invalid_reference_source is None:
                     light_output = render_component(scene_dir, rel_base, config)
-                    invalid_black_source = rel_base
+                    invalid_reference_source = rel_base
                 else:
-                    light_output = copy_component(scene_dir, invalid_black_source, rel_base, config)
-                    copied_from = light_output["primary"].replace(f"light_{light_index:03d}", Path(invalid_black_source).name)
+                    light_output = copy_component(scene_dir, invalid_reference_source, rel_base, config)
+                    copied_from = f"{invalid_reference_source}.{primary_component_format(config)}"
             light_meta = {
                 "id": light_index,
                 "canonical_position": p_can,
@@ -1366,7 +1919,10 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
                 "valid": valid,
                 "skip_reason": skip_reason,
                 "copied_from": copied_from,
-                "energy": float(spatial.get("base_energy", 500.0)),
+                "base_energy": float(light_settings["base_energy"]),
+                "intensity_scalar": float(light_settings["intensity_scalar"]),
+                "energy": float(light_settings["energy"]),
+                "color": [float(c) for c in light_settings["color"]],
                 "canonical_radius": radius,
                 "world_radius": radius,
             }
@@ -1382,10 +1938,14 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "light_volume_center": vec_to_list(center),
         "light_volume_center_source": "camera_look_at",
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
+        "receiver_materials": receiver_materials,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
         "valid_point_light_count": sum(1 for light in lights_meta if light["valid"]),
         "invalid_point_light_count": sum(1 for light in lights_meta if not light["valid"]),
-        "fixed_radius": radius,
+        "include_hdri_in_point_lights": include_hdri_in_point_lights,
+        "color_range": spatial.get("color_range"),
+        "intensity_range": spatial.get("intensity_range"),
+        "radius_range": spatial.get("radius_range"),
         "point_lights": lights_meta,
     }
 
@@ -1509,6 +2069,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
                 "light_position_preview": light_position_preview,
                 "light_volume_center": vec_to_list(look_target),
                 "light_volume_center_source": "camera_look_at",
+                "receiver_materials": config["_runtime"].get("receiver_materials", []),
             },
         }
         write_json(scene_dir / "meta.json", meta)
@@ -1722,10 +2283,15 @@ def main() -> int:
 
     object_manifest = resolve_path(root, config.get("object_manifest"))
     hdri_manifest = resolve_path(root, config.get("hdri_manifest"))
+    receiver_texture_manifest = resolve_path(
+        root,
+        config.get("receiver_texture_manifest") or config.get("layout", {}).get("receiver_texture_manifest"),
+    )
     fixture_manifest = resolve_path(root, config.get("fixture_scene_manifest"))
     config["_runtime"] = {
         "objects": load_path_lines(object_manifest, root) if object_manifest else [],
         "hdris": load_path_lines(hdri_manifest, root) if hdri_manifest else [],
+        "receiver_textures": load_receiver_texture_manifest(receiver_texture_manifest, root) if receiver_texture_manifest else [],
         "fixture_scenes": normalize_fixture_rows(load_jsonl(fixture_manifest), root) if fixture_manifest else [],
     }
 
