@@ -97,6 +97,7 @@
     "min_position_distance": 0.05,
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
+    "energy_range": [250.0, 900.0],
     "fixed_radius": 0.06,
     "color": [1.0, 1.0, 1.0],
     "color_range": [[0.1, 0.1, 0.1], [1.0, 1.0, 1.0]],

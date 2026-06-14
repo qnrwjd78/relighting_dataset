@@ -2,7 +2,7 @@
 set -u
 
 CONFIG="${1:-configs/tokenlight_synthetic_full.json}"
-OUTPUT_PREFIX="${2:-outputs/test_4gpu_500/objaverse_xl}"
+OUTPUT_PREFIX="${2:-outputs/objaverse_500/objaverse_xl}"
 ONLY="${3:-spatial}"
 COMPONENT_FORMAT="${4:-png}"
 

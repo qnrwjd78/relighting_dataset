@@ -1431,10 +1431,11 @@ def sample_spatial_light_color(spatial: dict, rng: random.Random) -> list[float]
 
 
 def sample_spatial_light_settings(spatial: dict, rng: random.Random, world_scale: float) -> dict:
-    base_energy = float(spatial.get("base_energy", 500.0))
+    energy_lo, energy_hi = random_float_range(rng, spatial.get("energy_range"), float(spatial.get("base_energy", 500.0)))
+    base_energy = rng.uniform(energy_lo, energy_hi)
     radius_lo, radius_hi = random_float_range(rng, spatial.get("radius_range"), float(spatial.get("fixed_radius", 0.06)))
     canonical_radius = rng.uniform(radius_lo, radius_hi)
-    component_color = spatial.get("component_color", [1.0, 1.0, 1.0])
+    component_color = sample_spatial_light_color(spatial, rng)
     return {
         "component_color": [float(component_color[0]), float(component_color[1]), float(component_color[2])],
         "canonical_energy": base_energy,
