@@ -60,10 +60,35 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=540)
     parser.add_argument("--samples", type=int, default=32)
     parser.add_argument("--component-format", choices=["exr", "png", "both"], default="png")
+    parser.add_argument(
+        "--ambient-source",
+        choices=["scene", "hdri"],
+        default="scene",
+        help="Use the source .blend scene lights for ambient preview/components, or replace them with sampled HDRI lighting.",
+    )
+    parser.add_argument(
+        "--point-light-mode",
+        choices=["target", "component"],
+        default="target",
+        help="Render point-light PNGs as final targets with ambient lighting included, or isolated point-light components.",
+    )
     parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default="on")
+    parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip point-light components.")
     parser.add_argument("--light-preview", action="store_true", default=True)
     parser.add_argument("--no-light-preview", action="store_false", dest="light_preview")
     parser.add_argument("--positions-per-scene", type=int, default=None)
+    parser.add_argument(
+        "--light-volume-placement",
+        choices=["bbox-center", "camera-framed"],
+        default="camera-framed",
+        help="Place the spatial light cube at the subject bbox center or move it onto the current camera axis.",
+    )
+    parser.add_argument(
+        "--light-volume-depth-over-scale",
+        type=float,
+        default=None,
+        help="Target camera depth / cube scale for camera-framed placement. Defaults to the canonical rig camera distance.",
+    )
     parser.add_argument(
         "--spatial-bbox-mode",
         choices=["auto", "candidates", "full"],
@@ -218,15 +243,24 @@ def worker_command(args: argparse.Namespace, blend_path: Path, item_path: Path) 
         str(args.samples),
         "--component-format",
         args.component_format,
+        "--ambient-source",
+        args.ambient_source,
+        "--point-light-mode",
+        args.point_light_mode,
         "--hdri-mode",
         args.hdri_mode,
     ]
     if args.positions_per_scene is not None:
         cmd.extend(["--positions-per-scene", str(args.positions_per_scene)])
+    cmd.extend(["--light-volume-placement", args.light_volume_placement])
+    if args.light_volume_depth_over_scale is not None:
+        cmd.extend(["--light-volume-depth-over-scale", str(args.light_volume_depth_over_scale)])
     cmd.extend(["--spatial-bbox-mode", args.spatial_bbox_mode])
     cmd.extend(["--subject-candidate-count", str(args.subject_candidate_count)])
     cmd.extend(["--candidate-padding", str(args.candidate_padding)])
     cmd.extend(["--candidate-outlier-factor", str(args.candidate_outlier_factor)])
+    if args.debug:
+        cmd.append("--debug")
     if args.light_preview:
         cmd.append("--light-preview")
     else:
@@ -299,6 +333,8 @@ def load_runtime_config(config_path: Path, args: argparse.Namespace) -> dict:
     if args.positions_per_scene is not None:
         config["spatial"]["positions_per_scene"] = args.positions_per_scene
     config["_component_format"] = args.component_format
+    config["_ambient_source"] = args.ambient_source
+    config["_point_light_mode"] = args.point_light_mode
     config["_hdri_mode"] = args.hdri_mode
     config["_light_preview"] = bool(args.light_preview)
     config["_render_pbr"] = False
@@ -439,6 +475,179 @@ def select_spatial_bounds(item: dict, full_bounds: tuple, args: argparse.Namespa
     return bounds[0], bounds[1], f"{args.spatial_bbox_mode}_subject_candidates:{names}"
 
 
+def canonical_depth_over_scale(config: dict) -> float:
+    cam_cfg = config.get("camera", {})
+    canonical_cfg = config.get("canonical", {})
+    canonical_center = canonical_cfg.get("center", [0.0, 0.0, 0.0])
+    position = cam_cfg.get("canonical_position")
+    if position is not None:
+        return max(abs(float(position[1]) - float(canonical_center[1])), 1e-6)
+    if cam_cfg.get("canonical_distance") is not None:
+        return max(abs(float(cam_cfg["canonical_distance"])), 1e-6)
+    lo, hi = cam_cfg.get("canonical_distance_range", [4.5, 4.5])
+    return max((abs(float(lo)) + abs(float(hi))) * 0.5, 1e-6)
+
+
+def canonical_forward_front_extent(config: dict) -> float:
+    cam_cfg = config.get("camera", {})
+    canonical_cfg = config.get("canonical", {})
+    canonical_center = canonical_cfg.get("center", [0.0, 0.0, 0.0])
+    center_y = float(canonical_center[1])
+    y_min, y_max = canonical_cfg.get("position_range", {}).get("y", [-1.0, 1.0])
+    position = cam_cfg.get("canonical_position")
+    camera_y = float(position[1]) if position is not None else center_y - 1.0
+    if camera_y <= center_y:
+        return max(center_y - float(y_min), 0.0)
+    return max(float(y_max) - center_y, 0.0)
+
+
+def safe_camera_float(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def camera_fov_snapshot(camera) -> dict:
+    data = camera.data
+    snapshot = {
+        "type": getattr(data, "type", None),
+        "angle_degrees": None,
+        "angle_x_degrees": None,
+        "angle_y_degrees": None,
+        "lens": safe_camera_float(getattr(data, "lens", None)),
+        "sensor_fit": getattr(data, "sensor_fit", None),
+        "sensor_width": safe_camera_float(getattr(data, "sensor_width", None)),
+        "sensor_height": safe_camera_float(getattr(data, "sensor_height", None)),
+        "shift_x": safe_camera_float(getattr(data, "shift_x", None)),
+        "shift_y": safe_camera_float(getattr(data, "shift_y", None)),
+        "ortho_scale": safe_camera_float(getattr(data, "ortho_scale", None)),
+    }
+    for key, attr in (
+        ("angle_degrees", "angle"),
+        ("angle_x_degrees", "angle_x"),
+        ("angle_y_degrees", "angle_y"),
+    ):
+        value = safe_camera_float(getattr(data, attr, None))
+        if value is not None:
+            snapshot[key] = math.degrees(value)
+    return snapshot
+
+
+def camera_framed_light_volume(
+    config: dict,
+    camera,
+    bbox_center,
+    relight,
+    Vector,
+    target_depth_over_scale: float | None,
+    scene=None,
+):
+    _right, _up, forward = relight.camera_basis(camera)
+    camera_location = Vector(camera.location)
+    bbox_depth = float((bbox_center - camera_location).dot(forward))
+    depth = max(bbox_depth, 0.1)
+    target_ratio = float(target_depth_over_scale) if target_depth_over_scale is not None else canonical_depth_over_scale(config)
+    target_ratio = max(target_ratio, 1e-6)
+    canonical_fov = math.radians(float(config.get("camera", {}).get("fov_degrees", 39.6)))
+    current_fov = float(getattr(camera.data, "angle_x", 0.0) or getattr(camera.data, "angle", canonical_fov))
+    current_fov_y = float(getattr(camera.data, "angle_y", 0.0) or getattr(camera.data, "angle", current_fov))
+    fov_scale_x = math.tan(current_fov * 0.5) / max(math.tan(canonical_fov * 0.5), 1e-6)
+    fov_scale_y = math.tan(current_fov_y * 0.5) / max(math.tan(canonical_fov * 0.5), 1e-6)
+    fov_scale = fov_scale_x
+    front_extent = canonical_forward_front_extent(config)
+    center_plane_scale = max((depth / target_ratio) * fov_scale, 1e-6)
+    projected_bbox_denominator = max(target_ratio - front_extent + fov_scale * front_extent, 1e-6)
+    scale = max((depth * fov_scale) / projected_bbox_denominator, 1e-6)
+    light_center = camera_location + forward * depth
+    if scene is not None:
+        right, up, _forward = relight.camera_basis(camera)
+        for _ in range(3):
+            co = relight.world_to_camera_view(scene, camera, light_center)
+            dx = 0.5 - float(co.x)
+            dy = 0.5 - float(co.y)
+            if abs(dx) < 1e-4 and abs(dy) < 1e-4:
+                break
+            half_width = depth * math.tan(current_fov * 0.5)
+            half_height = depth * math.tan(current_fov_y * 0.5)
+            light_center = light_center + right * (dx * 2.0 * half_width) + up * (dy * 2.0 * half_height)
+    shift = light_center - bbox_center
+
+    config.setdefault("_runtime", {})["canonical_scale"] = scale
+    adjustment = {
+        "mode": "camera-framed",
+        "bbox_center": relight.vec_to_list(bbox_center),
+        "adjusted_center": relight.vec_to_list(light_center),
+        "center_shift": relight.vec_to_list(shift),
+        "camera_depth": depth,
+        "bbox_camera_depth": bbox_depth,
+        "target_depth_over_scale": target_ratio,
+        "canonical_fov_degrees": math.degrees(canonical_fov),
+        "current_fov_degrees": math.degrees(current_fov),
+        "current_fov_y_degrees": math.degrees(current_fov_y),
+        "fov_scale_x": fov_scale_x,
+        "fov_scale_y": fov_scale_y,
+        "fov_scale_axis": "x",
+        "fov_scale": fov_scale,
+        "scale_match": "projected_bbox_x",
+        "canonical_front_extent": front_extent,
+        "center_plane_scale": center_plane_scale,
+        "projected_bbox_scale_multiplier": scale / max(center_plane_scale, 1e-6),
+        "scale": scale,
+    }
+    config["_runtime"]["light_volume_center_source"] = "camera_axis_at_bbox_depth"
+    config["_runtime"]["light_volume_adjustment"] = adjustment
+    return light_center, adjustment
+
+
+def render_debug_preview(
+    scene_dir: Path,
+    config: dict,
+    rng: random.Random,
+    camera,
+    light_center,
+    relight,
+) -> dict:
+    if config.get("_ambient_source") == "scene":
+        source = relight.scene_ambient_source_meta()
+    else:
+        ambient = config["ambient"]
+        hdri_path, hdri_mode = relight.choose_hdri_path(config, rng)
+        hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
+        hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
+        source = relight.set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
+        source["hdri_mode"] = hdri_mode
+        relight.remove_all_lights()
+
+    ambient_preview = f"../preview/{scene_dir.name}_ambient.png"
+    relight.render_png(scene_dir / ambient_preview)
+
+    positions = relight.sample_spatial_positions(config, rng)
+    light_position_preview = None
+    if config.get("_light_preview", False):
+        light_position_preview = relight.render_light_position_preview(scene_dir, positions, config, camera, light_center)
+
+    spatial = config["spatial"]
+    return {
+        "debug_preview_only": True,
+        "ambient_png": ambient_preview,
+        "light_position_preview": light_position_preview,
+        "ambient_source": source,
+        "light_volume_center": relight.vec_to_list(light_center),
+        "light_volume_center_source": config.get("_runtime", {}).get("light_volume_center_source", "bbox_center"),
+        "light_volume_adjustment": config.get("_runtime", {}).get("light_volume_adjustment"),
+        "canonical_transform": relight.canonical_transform_meta(config, camera, light_center),
+        "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
+        "position_sampling": spatial.get("sampling", "stratified_random"),
+        "grid_resolution": spatial.get("grid_resolution"),
+        "jitter": spatial.get("jitter"),
+        "min_position_distance": spatial.get("min_position_distance"),
+        "valid_point_light_count": 0,
+        "invalid_point_light_count": 0,
+        "point_lights": [],
+    }
+
+
 def worker(args: argparse.Namespace) -> int:
     script_dir = ROOT / "scripts"
     if str(script_dir) not in sys.path:
@@ -465,7 +674,7 @@ def worker(args: argparse.Namespace) -> int:
         raise RuntimeError(f"No mesh objects in {args.blend}")
     full_bbox_min, full_bbox_max = relight.mesh_bbox(mesh_objects)
     bbox_min, bbox_max, bbox_source = select_spatial_bounds(item, (full_bbox_min, full_bbox_max), args, Vector)
-    center = (bbox_min + bbox_max) * 0.5
+    bbox_center = (bbox_min + bbox_max) * 0.5
     relight.set_canonical_runtime_transform(config, bbox_min, bbox_max)
 
     camera = None
@@ -476,14 +685,39 @@ def worker(args: argparse.Namespace) -> int:
         camera = bpy.context.scene.camera
     else:
         rng_for_camera = random.Random(int(config["seed"]) + int(item_id))
-        camera, _camera_meta = relight.create_camera(config, rng_for_camera, center)
+        camera, _camera_meta = relight.create_camera(config, rng_for_camera, bbox_center)
+    bpy.context.view_layer.update()
+
+    light_center = bbox_center
+    if args.light_volume_placement == "camera-framed":
+        light_center, _light_volume_adjustment = camera_framed_light_volume(
+            config,
+            camera,
+            bbox_center,
+            relight,
+            Vector,
+            args.light_volume_depth_over_scale,
+            bpy.context.scene,
+        )
+    else:
+        config.setdefault("_runtime", {})["light_volume_center_source"] = "bbox_center"
+        config["_runtime"]["light_volume_adjustment"] = {
+            "mode": "bbox-center",
+            "bbox_center": relight.vec_to_list(bbox_center),
+            "adjusted_center": relight.vec_to_list(light_center),
+            "center_shift": [0.0, 0.0, 0.0],
+            "scale": relight.canonical_world_scale(config),
+        }
 
     rng = random.Random(int(config["seed"]) + int(item_id))
     output_root = resolve_repo_path(args.output)
     scene_dir = output_root / "scenes" / scene_id
     scene_dir.mkdir(parents=True, exist_ok=True)
 
-    spatial_meta = relight.render_spatial_components(scene_dir, config, rng, camera, center)
+    if args.debug:
+        spatial_meta = render_debug_preview(scene_dir, config, rng, camera, light_center, relight)
+    else:
+        spatial_meta = relight.render_spatial_components(scene_dir, config, rng, camera, light_center)
     meta = {
         "schema": "tokenlight_synthetic_components_v1",
         "scene_id": scene_id,
@@ -504,11 +738,12 @@ def worker(args: argparse.Namespace) -> int:
             "bbox_source": bbox_source,
             "full_scene_bbox_min": relight.vec_to_list(full_bbox_min),
             "full_scene_bbox_max": relight.vec_to_list(full_bbox_max),
-            "center": relight.vec_to_list(center),
+            "center": relight.vec_to_list(bbox_center),
         },
         "camera": {
             "name": camera.name if camera else None,
             "location": relight.vec_to_list(Vector(camera.location)) if camera else None,
+            "fov": camera_fov_snapshot(camera) if camera else None,
         },
         "render": {
             "resolution": [bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y],

@@ -45,6 +45,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pbr", action="store_true", help="Render extra PBR maps: depth, normal, albedo, roughness.")
     parser.add_argument("--component-format", choices=["exr", "png", "both"], default=None)
     parser.add_argument("--output-format", choices=["exr", "png", "both"], dest="component_format")
+    parser.add_argument("--ambient-source", choices=["hdri", "scene"], default=None)
+    parser.add_argument("--point-light-mode", choices=["component", "target"], default=None)
     parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default=None)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
@@ -1388,6 +1390,31 @@ def remove_all_lights() -> None:
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
+def scene_ambient_source_meta() -> dict:
+    lights = []
+    for obj in bpy.data.objects:
+        if obj.type != "LIGHT":
+            continue
+        data = obj.data
+        lights.append(
+            {
+                "name": obj.name,
+                "type": data.type,
+                "location": vec_to_list(Vector(obj.location)),
+                "energy": float(getattr(data, "energy", 0.0)),
+                "color": [float(channel) for channel in getattr(data, "color", (1.0, 1.0, 1.0))],
+                "hide_render": bool(obj.hide_render),
+            }
+        )
+    return {
+        "type": "scene",
+        "world_preserved": True,
+        "light_count": len(lights),
+        "renderable_light_count": sum(1 for light in lights if not light["hide_render"]),
+        "lights": lights,
+    }
+
+
 def create_point_light(name: str, location: Vector, energy: float, radius: float, color: list[float]) -> bpy.types.Object:
     data = bpy.data.lights.new(name=name, type="POINT")
     obj = bpy.data.objects.new(name, data)
@@ -2040,13 +2067,19 @@ def render_object_mask(scene_dir: Path, subject_objects: list[bpy.types.Object])
 
 
 def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> dict:
-    ambient = config["ambient"]
-    hdri_path, hdri_mode = choose_hdri_path(config, rng)
-    hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
-    hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
-    source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
-    source["hdri_mode"] = hdri_mode
-    remove_all_lights()
+    ambient_source = str(config.get("_ambient_source", "hdri")).lower()
+    point_light_mode = str(config.get("_point_light_mode", "component")).lower()
+    render_point_light_targets = point_light_mode in {"target", "additive", "add-to-scene", "scene-plus-light"}
+    if ambient_source == "scene":
+        source = scene_ambient_source_meta()
+    else:
+        ambient = config["ambient"]
+        hdri_path, hdri_mode = choose_hdri_path(config, rng)
+        hdri_strength = rng.uniform(*ambient.get("hdri_strength_range", [0.8, 1.2]))
+        hdri_rotation = rng.random() * 2.0 * math.pi if ambient.get("hdri_rotation_random", True) else 0.0
+        source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
+        source["hdri_mode"] = hdri_mode
+        remove_all_lights()
     ambient_output = render_component(scene_dir, "spatial/ambient", config)
     ambient_render = ambient_output["primary"]
     ambient_png = f"../preview/{scene_dir.name}_ambient.png"
@@ -2060,11 +2093,15 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     lights_meta = []
     spatial = config["spatial"]
     include_hdri_in_point_lights = bool(spatial.get("include_hdri_in_point_lights", False))
-    if not include_hdri_in_point_lights:
-        set_black_world()
+    include_ambient_in_point_lights = render_point_light_targets or include_hdri_in_point_lights
+    if not render_point_light_targets:
+        if ambient_source == "scene" and not include_ambient_in_point_lights:
+            remove_all_lights()
+        if not include_hdri_in_point_lights:
+            set_black_world()
     receiver_bounds = config["_runtime"].get("receiver_bounds")
     receiver_materials = config["_runtime"].get("receiver_materials", [])
-    invalid_reference_source: str | None = "spatial/ambient" if include_hdri_in_point_lights else None
+    invalid_reference_source: str | None = "spatial/ambient" if include_ambient_in_point_lights else None
     transform_meta = canonical_transform_meta(config, camera, center)
     world_scale = float(transform_meta["scale"])
     with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
@@ -2118,7 +2155,8 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "ambient_source": source,
         "pbr_maps": pbr_maps,
         "light_volume_center": vec_to_list(center),
-        "light_volume_center_source": "bbox_center",
+        "light_volume_center_source": config.get("_runtime", {}).get("light_volume_center_source", "bbox_center"),
+        "light_volume_adjustment": config.get("_runtime", {}).get("light_volume_adjustment"),
         "canonical_transform": transform_meta,
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
         "receiver_materials": receiver_materials,
@@ -2129,7 +2167,10 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "min_position_distance": spatial.get("min_position_distance"),
         "valid_point_light_count": sum(1 for light in lights_meta if light["valid"]),
         "invalid_point_light_count": sum(1 for light in lights_meta if not light["valid"]),
+        "point_light_mode": point_light_mode,
+        "point_light_output_semantics": "ambient_plus_point_light_target" if render_point_light_targets else "isolated_point_light_component",
         "include_hdri_in_point_lights": include_hdri_in_point_lights,
+        "include_ambient_source_in_point_lights": include_ambient_in_point_lights,
         "color_range": spatial.get("color_range"),
         "intensity_range": spatial.get("intensity_range"),
         "radius_range": spatial.get("radius_range"),
@@ -2479,6 +2520,14 @@ def main() -> int:
     if args.component_format is not None:
         config["render"]["component_format"] = args.component_format
     config["_component_format"] = str(config["render"].get("component_format", "exr")).lower()
+    config["_ambient_source"] = (
+        args.ambient_source
+        or str(config.get("spatial", {}).get("ambient_source", config.get("ambient_source", "hdri"))).lower()
+    )
+    config["_point_light_mode"] = (
+        args.point_light_mode
+        or str(config.get("spatial", {}).get("point_light_mode", config.get("point_light_mode", "component"))).lower()
+    )
     config["_hdri_mode"] = args.hdri_mode or str(config.get("ambient", {}).get("hdri_mode", "on")).lower()
     config["_debug_preview_only"] = bool(args.debug)
     config["_light_preview"] = bool(args.light_preview or args.debug_light_preview or args.debug)

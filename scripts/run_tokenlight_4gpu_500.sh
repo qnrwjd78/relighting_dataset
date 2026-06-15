@@ -11,10 +11,18 @@ WIDTH="${WIDTH:-960}"
 HEIGHT="${HEIGHT:-960}"
 SAMPLES="${SAMPLES:-32}"
 HDRI_MODE="${HDRI_MODE:-on}"
+AMBIENT_SOURCE="${AMBIENT_SOURCE:-hdri}"
+POINT_LIGHT_MODE="${POINT_LIGHT_MODE:-component}"
 BLENDER_CMD="${BLENDER_CMD:-blender}"
 LOG_DIR="${LOG_DIR:-logs/tokenlight_4gpu_500}"
 
-mkdir -p "$LOG_DIR" "$OUTPUT_PREFIX"
+mkdir -p "$OUTPUT_PREFIX"
+if ! mkdir -p "$LOG_DIR" 2>/dev/null || [[ ! -w "$LOG_DIR" ]]; then
+  fallback_log_dir="${LOG_DIR}_${USER:-user}"
+  echo "[WARN] LOG_DIR=${LOG_DIR} is not writable; using ${fallback_log_dir}" >&2
+  LOG_DIR="$fallback_log_dir"
+  mkdir -p "$LOG_DIR"
+fi
 
 pids=()
 names=()
@@ -48,6 +56,8 @@ for gpu in 0 1 2 3; do
     --samples "$SAMPLES" \
     --component-format "$COMPONENT_FORMAT" \
     --only "$ONLY" \
+    --ambient-source "$AMBIENT_SOURCE" \
+    --point-light-mode "$POINT_LIGHT_MODE" \
     --hdri-mode "$HDRI_MODE" \
     > "$log_file" 2>&1 &
 

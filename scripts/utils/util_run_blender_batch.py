@@ -19,6 +19,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--samples", type=int, default=None)
     parser.add_argument("--output", default=None)
     parser.add_argument("--component-format", choices=["exr", "png", "both"], default=None)
+    parser.add_argument("--ambient-source", choices=["hdri", "scene"], default=None)
+    parser.add_argument("--point-light-mode", choices=["component", "target"], default=None)
     parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default=None)
     parser.add_argument("--start-index", type=int, default=0)
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
@@ -65,6 +67,10 @@ def main() -> int:
         cmd += ["--output", args.output]
     if args.component_format is not None:
         cmd += ["--component-format", args.component_format]
+    if args.ambient_source is not None:
+        cmd += ["--ambient-source", args.ambient_source]
+    if args.point_light_mode is not None:
+        cmd += ["--point-light-mode", args.point_light_mode]
     if args.hdri_mode is not None:
         cmd += ["--hdri-mode", args.hdri_mode]
 
