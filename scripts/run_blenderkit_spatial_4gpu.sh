@@ -6,9 +6,9 @@ CLASSIFICATION="${CLASSIFICATION:-outputs/previews/blenderkit/blenderkit_scene_u
 INDEX_JSON="${INDEX_JSON:-outputs/previews/blenderkit/blenderkit_index.json}"
 CATEGORIES="${CATEGORIES:-single_scene_light_good background_good_for_portrait_or_object}"
 
-OUTPUT="${OUTPUT:-outputs/blenderkit_classified_spatial_all}"
-PREVIEW_DIR="${PREVIEW_DIR:-outputs/previews/blenderkit_classified_spatial_all}"
-WORK_DIR="${WORK_DIR:-outputs/work/blenderkit_classified_spatial_all}"
+OUTPUT="${OUTPUT:-outputs/blenderkit_dataset}"
+PREVIEW_DIR="${PREVIEW_DIR:-outputs/previews/blenderkit_dataset}"
+WORK_DIR="${WORK_DIR:-outputs/work/blenderkit_dataset}"
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-data/blenderkit_spatial_cache}"
 LOG_DIR="${LOG_DIR:-logs/blenderkit_spatial_4gpu}"
 
