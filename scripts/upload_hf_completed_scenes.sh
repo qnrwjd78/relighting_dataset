@@ -8,10 +8,14 @@ REMOTE_DIR="${REMOTE_DIR:-completed_archives}"
 STAGING_PARENT="${STAGING_PARENT:-outputs/hf_completed_upload_stage}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-outputs/hf_upload_archives}"
 COMPRESSION="${COMPRESSION:-auto}"
+SPLIT_SIZE="${SPLIT_SIZE:-}"
 PYTHON_CMD="${PYTHON_CMD:-python3}"
 KEEP_ARCHIVE="${KEEP_ARCHIVE:-0}"
 KEEP_STAGE="${KEEP_STAGE:-0}"
 HF_UPLOAD_COMMIT_MESSAGE="${HF_UPLOAD_COMMIT_MESSAGE:-Upload completed blender relight scenes archive}"
+ARCHIVE_PATH=""
+ARCHIVE_PARTS=()
+PARTS_MANIFEST_PATH=""
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -34,12 +38,53 @@ cleanup() {
     echo "[CLEANUP] removing stage: $STAGE_ROOT"
     rm -rf "$STAGE_ROOT"
   fi
-  if ! truthy "$KEEP_ARCHIVE" && [[ -n "${ARCHIVE_PATH:-}" && -f "$ARCHIVE_PATH" ]]; then
-    echo "[CLEANUP] removing local archive: $ARCHIVE_PATH"
-    rm -f "$ARCHIVE_PATH"
+  if ! truthy "$KEEP_ARCHIVE"; then
+    if [[ -n "${ARCHIVE_PATH:-}" && -f "$ARCHIVE_PATH" ]]; then
+      echo "[CLEANUP] removing local archive: $ARCHIVE_PATH"
+      rm -f "$ARCHIVE_PATH"
+    fi
+    for part in "${ARCHIVE_PARTS[@]:-}"; do
+      if [[ -f "$part" ]]; then
+        echo "[CLEANUP] removing local archive part: $part"
+        rm -f "$part"
+      fi
+    done
+    if [[ -n "${PARTS_MANIFEST_PATH:-}" && -f "$PARTS_MANIFEST_PATH" ]]; then
+      echo "[CLEANUP] removing local parts manifest: $PARTS_MANIFEST_PATH"
+      rm -f "$PARTS_MANIFEST_PATH"
+    fi
   fi
 }
 trap cleanup EXIT
+
+upload_one_file() {
+  local local_path="$1"
+  local remote_path="$2"
+  local commit_message="$3"
+  "$PYTHON_CMD" - "$REPO_ID" "$REPO_TYPE" "$local_path" "$remote_path" "$commit_message" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+from huggingface_hub import HfApi
+
+repo_id, repo_type, local_path, remote_path, commit_message = sys.argv[1:6]
+local = Path(local_path)
+if not local.is_file():
+    raise SystemExit(f"File does not exist: {local}")
+
+api = HfApi(token=os.environ.get("HF_TOKEN") or None)
+api.create_repo(repo_id=repo_id, repo_type=repo_type, exist_ok=True)
+api.upload_file(
+    path_or_fileobj=str(local),
+    path_in_repo=remote_path,
+    repo_id=repo_id,
+    repo_type=repo_type,
+    commit_message=commit_message,
+)
+print(f"uploaded {local} -> {repo_id}/{remote_path}")
+PY
+}
 
 require_cmd tar
 require_cmd cp
@@ -180,46 +225,82 @@ esac
 
 if [[ "$COMPRESSION" == "zst" ]]; then
   require_cmd zstd
-  ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.tar.zst"
-  TAR_ARGS=(-cf "$ARCHIVE_PATH" --use-compress-program "zstd -T0 -19")
+  ARCHIVE_EXT="tar.zst"
 else
-  ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.tar.gz"
-  TAR_ARGS=(-czf "$ARCHIVE_PATH")
+  ARCHIVE_EXT="tar.gz"
 fi
 
-REMOTE_PATH="${REMOTE_PATH:-${REMOTE_DIR}/$(basename "$ARCHIVE_PATH")}"
-
 echo "[INFO] repo=${REPO_ID} repo_type=${REPO_TYPE}"
-echo "[INFO] archive=${ARCHIVE_PATH}"
-echo "[INFO] remote_path=${REMOTE_PATH}"
 echo "[INFO] compression=${COMPRESSION}"
-echo "[COMPRESS] creating archive from completed-scene stage..."
-tar "${TAR_ARGS[@]}" -C "$STAGING_PARENT" "$DATASET_NAME"
-du -h "$ARCHIVE_PATH"
 
-echo "[UPLOAD] uploading to Hugging Face..."
-"$PYTHON_CMD" - "$REPO_ID" "$REPO_TYPE" "$ARCHIVE_PATH" "$REMOTE_PATH" "$HF_UPLOAD_COMMIT_MESSAGE" <<'PY'
-import os
+if [[ -n "$SPLIT_SIZE" ]]; then
+  require_cmd split
+  PART_PREFIX="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.${ARCHIVE_EXT}.part-"
+  PARTS_MANIFEST_PATH="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.${ARCHIVE_EXT}.parts.json"
+  rm -f "${PART_PREFIX}"* "$PARTS_MANIFEST_PATH"
+
+  echo "[INFO] split_size=${SPLIT_SIZE}"
+  echo "[INFO] archive_parts_prefix=${PART_PREFIX}"
+  echo "[COMPRESS] creating split archive parts from completed-scene stage..."
+  if [[ "$COMPRESSION" == "zst" ]]; then
+    tar -cf - -C "$STAGING_PARENT" "$DATASET_NAME" \
+      | zstd -T0 -19 -c \
+      | split -b "$SPLIT_SIZE" -d -a 4 - "$PART_PREFIX"
+  else
+    tar -czf - -C "$STAGING_PARENT" "$DATASET_NAME" \
+      | split -b "$SPLIT_SIZE" -d -a 4 - "$PART_PREFIX"
+  fi
+
+  mapfile -t ARCHIVE_PARTS < <(find "$ARCHIVE_DIR" -maxdepth 1 -type f -name "$(basename "$PART_PREFIX")*" | sort)
+  if ((${#ARCHIVE_PARTS[@]} == 0)); then
+    die "Failed to create split archive parts."
+  fi
+  du -ch "${ARCHIVE_PARTS[@]}" | tail -n 1
+
+  "$PYTHON_CMD" - "$PARTS_MANIFEST_PATH" "$ARCHIVE_BASENAME" "$ARCHIVE_EXT" "$SPLIT_SIZE" "${ARCHIVE_PARTS[@]}" <<'PY'
+import json
 import sys
 from pathlib import Path
 
-from huggingface_hub import HfApi
-
-repo_id, repo_type, archive_path, remote_path, commit_message = sys.argv[1:6]
-archive = Path(archive_path)
-if not archive.is_file():
-    raise SystemExit(f"Archive does not exist: {archive}")
-
-api = HfApi(token=os.environ.get("HF_TOKEN") or None)
-api.create_repo(repo_id=repo_id, repo_type=repo_type, exist_ok=True)
-api.upload_file(
-    path_or_fileobj=str(archive),
-    path_in_repo=remote_path,
-    repo_id=repo_id,
-    repo_type=repo_type,
-    commit_message=commit_message,
-)
-print(f"uploaded {archive} -> {repo_id}/{remote_path}")
+manifest_path = Path(sys.argv[1])
+archive_basename = sys.argv[2]
+archive_ext = sys.argv[3]
+split_size = sys.argv[4]
+parts = [Path(p) for p in sys.argv[5:]]
+part_names = [p.name for p in parts]
+manifest = {
+    "schema": "hf_split_archive_manifest_v1",
+    "archive_name": f"{archive_basename}.{archive_ext}",
+    "split_size": split_size,
+    "part_count": len(part_names),
+    "parts": part_names,
+    "reconstruct": f"cat {archive_basename}.{archive_ext}.part-* > {archive_basename}.{archive_ext}",
+}
+manifest_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 PY
+
+  echo "[UPLOAD] uploading ${#ARCHIVE_PARTS[@]} archive parts to Hugging Face..."
+  for part in "${ARCHIVE_PARTS[@]}"; do
+    remote_path="${REMOTE_DIR}/$(basename "$part")"
+    upload_one_file "$part" "$remote_path" "$HF_UPLOAD_COMMIT_MESSAGE"
+  done
+  upload_one_file "$PARTS_MANIFEST_PATH" "${REMOTE_DIR}/$(basename "$PARTS_MANIFEST_PATH")" "$HF_UPLOAD_COMMIT_MESSAGE"
+else
+  ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.${ARCHIVE_EXT}"
+  REMOTE_PATH="${REMOTE_PATH:-${REMOTE_DIR}/$(basename "$ARCHIVE_PATH")}"
+
+  echo "[INFO] archive=${ARCHIVE_PATH}"
+  echo "[INFO] remote_path=${REMOTE_PATH}"
+  echo "[COMPRESS] creating archive from completed-scene stage..."
+  if [[ "$COMPRESSION" == "zst" ]]; then
+    tar -cf "$ARCHIVE_PATH" --use-compress-program "zstd -T0 -19" -C "$STAGING_PARENT" "$DATASET_NAME"
+  else
+    tar -czf "$ARCHIVE_PATH" -C "$STAGING_PARENT" "$DATASET_NAME"
+  fi
+  du -h "$ARCHIVE_PATH"
+
+  echo "[UPLOAD] uploading to Hugging Face..."
+  upload_one_file "$ARCHIVE_PATH" "$REMOTE_PATH" "$HF_UPLOAD_COMMIT_MESSAGE"
+fi
 
 echo "[DONE] uploaded ${#META_FILES[@]} completed scenes"
