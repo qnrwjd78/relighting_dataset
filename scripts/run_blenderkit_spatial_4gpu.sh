@@ -19,10 +19,12 @@ MAX_ITEMS="${MAX_ITEMS:-0}"
 WIDTH="${WIDTH:-960}"
 HEIGHT="${HEIGHT:-960}"
 SAMPLES="${SAMPLES:-32}"
-COMPONENT_FORMAT="${COMPONENT_FORMAT:-png}"
+COMPONENT_FORMAT="${COMPONENT_FORMAT:-exr}"
 AMBIENT_SOURCE="${AMBIENT_SOURCE:-scene}"
-POINT_LIGHT_MODE="${POINT_LIGHT_MODE:-target}"
+POINT_LIGHT_MODE="${POINT_LIGHT_MODE:-component}"
 HDRI_MODE="${HDRI_MODE:-on}"
+GLOBAL_DIFFUSE="${GLOBAL_DIFFUSE:-0}"
+PER_LIGHT_DIFFUSE="${PER_LIGHT_DIFFUSE:-0}"
 LIGHT_VOLUME_PLACEMENT="${LIGHT_VOLUME_PLACEMENT:-camera-framed}"
 LIGHT_VOLUME_DEPTH_OVER_SCALE="${LIGHT_VOLUME_DEPTH_OVER_SCALE:-}"
 SPATIAL_BBOX_MODE="${SPATIAL_BBOX_MODE:-auto}"
@@ -210,6 +212,12 @@ for shard in "${!GPU_LIST[@]}"; do
   fi
   if [[ "$OVERWRITE_BLEND" == "1" || "$OVERWRITE_BLEND" == "true" ]]; then
     cmd+=(--overwrite-blend)
+  fi
+  if [[ "$GLOBAL_DIFFUSE" == "1" || "$GLOBAL_DIFFUSE" == "true" ]]; then
+    cmd+=(--global-diffuse)
+  fi
+  if [[ "$PER_LIGHT_DIFFUSE" == "1" || "$PER_LIGHT_DIFFUSE" == "true" ]]; then
+    cmd+=(--per-light-diffuse)
   fi
   if ((${#EXTRA_ARGS_ARRAY[@]} > 0)); then
     cmd+=("${EXTRA_ARGS_ARRAY[@]}")

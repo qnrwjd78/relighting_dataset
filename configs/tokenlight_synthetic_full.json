@@ -28,13 +28,15 @@
     "canonical_distance_range": [4.5, 4.5],
     "azimuth_degrees_range": [-35.0, 35.0],
     "elevation_degrees_range": [4.0, 24.0],
+    "roll_degrees_range": [0.0, 0.0],
     "look_at_jitter": 0.0,
     "fit_to_object": false
   },
   "object": {
     "target_size": 1.2,
+    "orientation_mode": "keep",
     "primitive_fallbacks": ["sphere", "cube", "torus", "cylinder", "cone"],
-    "randomize_materials": true,
+    "randomize_materials": false,
     "material_families": ["matte", "plastic", "glossy", "metal"],
     "allow_transparent_materials": false
   },
@@ -79,6 +81,8 @@
     "reference_object_size": 1.2,
     "scale_rule": "bbox_max_extent",
     "scale_margin": 1.25,
+    "scale_multiplier_range": [0.9, 1.1],
+    "target_center_jitter": [0.15, 0.15, 0.1],
     "min_world_scale": 0.45,
     "debug_marker_radius": 0.02,
     "debug_line_bevel": 0.006,
@@ -91,10 +95,11 @@
   "spatial": {
     "enabled": true,
     "positions_per_scene": 64,
-    "sampling": "jittered_grid",
+    "sampling": "uniform_random",
     "grid_resolution": 4,
     "jitter": 0.8,
     "min_position_distance": 0.05,
+    "receiver_bounds_filter": false,
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "energy_range": [250.0, 900.0],
@@ -104,7 +109,25 @@
     "intensity_range": [0.25, 2.0],
     "radius_range": [0.02, 0.25],
     "component_color": [1.0, 1.0, 1.0],
-    "include_hdri_in_point_lights": false
+    "include_hdri_in_point_lights": false,
+    "per_light_diffuse": {
+      "enabled": false,
+      "values": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+      "radius_range": [0.02, 0.4],
+      "radius_mapping": "linear"
+    }
+  },
+  "global_diffuse": {
+    "enabled": false,
+    "values": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+    "implementation": "dominant_area_light_spread",
+    "constant_ambient_color": [0.72, 0.72, 0.72],
+    "constant_ambient_strength": 0.35,
+    "area_light_canonical_position": [-0.45, -0.65, 1.15],
+    "area_light_energy": 650.0,
+    "spread_degrees_range": [6.0, 70.0],
+    "energy_scale_with_scene": true,
+    "complete_target_variants": false
   },
   "diffuse": {
     "enabled": true,

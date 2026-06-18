@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -48,6 +49,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ambient-source", choices=["hdri", "scene"], default=None)
     parser.add_argument("--point-light-mode", choices=["component", "target"], default=None)
     parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default=None)
+    parser.add_argument("--positions-per-scene", type=int, default=None)
+    parser.add_argument("--global-diffuse", dest="global_diffuse", action="store_true", default=None)
+    parser.add_argument("--no-global-diffuse", dest="global_diffuse", action="store_false")
+    parser.add_argument("--per-light-diffuse", dest="per_light_diffuse", action="store_true", default=None)
+    parser.add_argument("--no-per-light-diffuse", dest="per_light_diffuse", action="store_false")
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
 
@@ -616,7 +622,9 @@ def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: rando
                 obj.data.materials.clear()
                 obj.data.materials.append(random_material(rng, families))
 
-    normalize_objects(mesh_objects, float(config["object"].get("target_size", 1.2)))
+    orientation_mode = str(config["object"].get("orientation_mode", "keep") if asset_path else "keep")
+    orientation_meta = normalize_objects(mesh_objects, float(config["object"].get("target_size", 1.2)), orientation_mode)
+    config.setdefault("_runtime", {})["object_orientation"] = orientation_meta
     tag_objects(mesh_objects, "TL_SUBJECT")
     return mesh_objects
 
@@ -675,7 +683,112 @@ def apply_world_transform(objects: list[bpy.types.Object], matrix: Matrix) -> No
     bpy.context.view_layer.update()
 
 
-def normalize_objects(objects: list[bpy.types.Object], target_size: float) -> None:
+def bbox_dimensions(objects: list[bpy.types.Object]) -> Vector:
+    bbox_min, bbox_max = mesh_bbox(objects)
+    return bbox_max - bbox_min
+
+
+def object_orientation_candidates() -> list[tuple[str, Matrix]]:
+    return [
+        ("keep", Matrix.Identity(4)),
+        ("x+90", Matrix.Rotation(math.radians(90.0), 4, "X")),
+        ("x-90", Matrix.Rotation(math.radians(-90.0), 4, "X")),
+        ("y+90", Matrix.Rotation(math.radians(90.0), 4, "Y")),
+        ("y-90", Matrix.Rotation(math.radians(-90.0), 4, "Y")),
+    ]
+
+
+def restore_root_matrices(objects: list[bpy.types.Object], matrices: dict[str, Matrix]) -> None:
+    for obj in root_objects(objects):
+        if obj.name in matrices:
+            obj.matrix_world = matrices[obj.name].copy()
+    bpy.context.view_layer.update()
+
+
+def dimensions_after_transform(objects: list[bpy.types.Object], transform: Matrix, matrices: dict[str, Matrix]) -> Vector:
+    restore_root_matrices(objects, matrices)
+    apply_world_transform(objects, transform)
+    dims = bbox_dimensions(objects)
+    restore_root_matrices(objects, matrices)
+    return dims
+
+
+def choose_auto_ground_orientation(objects: list[bpy.types.Object]) -> tuple[str, Matrix, str]:
+    original = {obj.name: obj.matrix_world.copy() for obj in root_objects(objects)}
+    current = bbox_dimensions(objects)
+    values = [float(current.x), float(current.y), float(current.z)]
+    shortest = max(min(values), 1e-6)
+    longest = max(max(values), 1e-6)
+    xy_min = max(min(float(current.x), float(current.y)), 1e-6)
+    xy_max = max(float(current.x), float(current.y), 1e-6)
+    z = float(current.z)
+
+    if z <= shortest * 1.05:
+        return "keep", Matrix.Identity(4), "z_already_shortest"
+    if shortest / longest >= 0.55:
+        return "keep", Matrix.Identity(4), "ambiguous_box"
+    if z <= xy_min * 0.8:
+        return "keep", Matrix.Identity(4), "already_low_profile"
+    if z >= xy_max * 1.2 and xy_min / xy_max >= 0.35:
+        return "keep", Matrix.Identity(4), "already_tall_profile"
+
+    best_name = "keep"
+    best_matrix = Matrix.Identity(4)
+    best_score = (abs(z - min(float(current.x), float(current.y), z)), 0.0)
+    for name, matrix in object_orientation_candidates():
+        dims = dimensions_after_transform(objects, matrix, original)
+        values = [float(dims.x), float(dims.y), float(dims.z)]
+        shortest = max(min(values), 1e-6)
+        footprint = max(values[0] * values[1], 1e-6)
+        height_gap = abs(values[2] - shortest)
+        score = (height_gap, -footprint)
+        if score < best_score:
+            best_name = name
+            best_matrix = matrix
+            best_score = score
+    restore_root_matrices(objects, original)
+    return best_name, best_matrix, "shortest_axis_to_ground_height"
+
+
+def choose_object_orientation(objects: list[bpy.types.Object], mode: str) -> tuple[str, Matrix, str]:
+    mode = mode.lower()
+    if mode in {"keep", "none", "off"}:
+        return "keep", Matrix.Identity(4), "disabled"
+    if mode in {"longest_axis_up", "upright_longest_axis"}:
+        dims = bbox_dimensions(objects)
+        values = [float(dims.x), float(dims.y), float(dims.z)]
+        longest_axis = max(range(3), key=lambda axis: values[axis])
+        if longest_axis == 0:
+            return "x_to_z", Matrix.Rotation(math.radians(-90.0), 4, "Y"), "longest_axis_up"
+        if longest_axis == 1:
+            return "y_to_z", Matrix.Rotation(math.radians(90.0), 4, "X"), "longest_axis_up"
+        return "keep", Matrix.Identity(4), "longest_axis_already_up"
+    if mode in {"shortest_axis_up", "ground_min_height"}:
+        original = {obj.name: obj.matrix_world.copy() for obj in root_objects(objects)}
+        best_name = "keep"
+        best_matrix = Matrix.Identity(4)
+        best_score = None
+        for name, matrix in object_orientation_candidates():
+            dims = dimensions_after_transform(objects, matrix, original)
+            score = (float(dims.z), -float(dims.x * dims.y))
+            if best_score is None or score < best_score:
+                best_name = name
+                best_matrix = matrix
+                best_score = score
+        restore_root_matrices(objects, original)
+        return best_name, best_matrix, "shortest_axis_up"
+    if mode == "auto_ground":
+        return choose_auto_ground_orientation(objects)
+    raise ValueError(f"Unsupported object.orientation_mode: {mode}")
+
+
+def normalize_objects(objects: list[bpy.types.Object], target_size: float, orientation_mode: str = "keep") -> dict:
+    original_dims = bbox_dimensions(objects)
+    orientation_name, orientation_matrix, orientation_reason = choose_object_orientation(objects, orientation_mode)
+    if orientation_name != "keep":
+        apply_world_transform(objects, orientation_matrix)
+    oriented_dims = bbox_dimensions(objects)
+
     bbox_min, bbox_max = mesh_bbox(objects)
     center = (bbox_min + bbox_max) * 0.5
     max_dim = max((bbox_max - bbox_min).x, (bbox_max - bbox_min).y, (bbox_max - bbox_min).z)
@@ -689,6 +802,15 @@ def normalize_objects(objects: list[bpy.types.Object], target_size: float) -> No
     center_xy = Vector(((bbox_min.x + bbox_max.x) * 0.5, (bbox_min.y + bbox_max.y) * 0.5, 0.0))
     lift = Vector((-center_xy.x, -center_xy.y, -bbox_min.z))
     apply_world_transform(objects, Matrix.Translation(lift))
+    final_dims = bbox_dimensions(objects)
+    return {
+        "mode": orientation_mode,
+        "applied": orientation_name,
+        "reason": orientation_reason,
+        "original_dimensions": vec_to_list(original_dims),
+        "oriented_dimensions": vec_to_list(oriented_dims),
+        "final_dimensions": vec_to_list(final_dims),
+    }
 
 
 def sample_range(config_value, fallback: float, rng: random.Random) -> float:
@@ -1073,6 +1195,38 @@ def look_at(obj: bpy.types.Object, target: Vector) -> None:
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
+def set_camera_axes(camera: bpy.types.Object, right: Vector, up: Vector, forward: Vector) -> None:
+    rotation = Matrix(
+        (
+            (right.x, up.x, -forward.x),
+            (right.y, up.y, -forward.y),
+            (right.z, up.z, -forward.z),
+        )
+    )
+    camera.rotation_euler = rotation.to_euler()
+
+
+def camera_axes_from_angles(azimuth: float, elevation: float, roll: float) -> tuple[Vector, Vector, Vector]:
+    view_direction = Vector(
+        (
+            math.cos(elevation) * math.sin(azimuth),
+            -math.cos(elevation) * math.cos(azimuth),
+            math.sin(elevation),
+        )
+    ).normalized()
+    forward = (-view_direction).normalized()
+    world_up = Vector((0.0, 0.0, 1.0))
+    if abs(forward.dot(world_up)) > 0.985:
+        world_up = Vector((0.0, 1.0, 0.0))
+    right = forward.cross(world_up).normalized()
+    up = right.cross(forward).normalized()
+    if abs(float(roll)) > 1e-8:
+        roll_matrix = Matrix.Rotation(float(roll), 4, forward)
+        right = (roll_matrix @ right).normalized()
+        up = (roll_matrix @ up).normalized()
+    return right, up, forward
+
+
 def canonical_mapping(config: dict) -> str:
     return str(config.get("canonical", {}).get("mapping", "canonical_rig")).lower()
 
@@ -1095,42 +1249,149 @@ def canonical_camera_position(config: dict, rng: random.Random) -> Vector:
     return Vector((0.0, -abs(distance), 0.0))
 
 
+def similarity_rotation_matrix_meta(right: Vector, forward: Vector, up: Vector) -> list[list[float]]:
+    return [
+        [float(right.x), float(forward.x), float(up.x)],
+        [float(right.y), float(forward.y), float(up.y)],
+        [float(right.z), float(forward.z), float(up.z)],
+    ]
+
+
+def similarity_axes_from_meta(meta: dict) -> tuple[Vector, Vector, Vector]:
+    axes = meta.get("axes", {})
+    right = Vector(axes.get("x_axis_world", [1.0, 0.0, 0.0]))
+    forward = Vector(axes.get("y_axis_world", [0.0, 1.0, 0.0]))
+    up = Vector(axes.get("z_axis_world", [0.0, 0.0, 1.0]))
+    return right.normalized(), forward.normalized(), up.normalized()
+
+
+def transformed_canonical_point(config: dict, p: Vector | list[float], target_center: Vector | None = None) -> Vector:
+    runtime = config.get("_runtime", {})
+    transform = runtime.get("similarity_transform")
+    if not transform:
+        raise RuntimeError("No similarity transform has been initialized.")
+    right, forward, up = similarity_axes_from_meta(transform)
+    center = target_center or Vector(transform["target_center"])
+    scale = float(transform["scale"])
+    canonical = Vector((float(p[0]), float(p[1]), float(p[2]))) if not isinstance(p, Vector) else p
+    offset = canonical - Vector(transform["canonical_center"])
+    return center + right * (offset.x * scale) + forward * (offset.y * scale) + up * (offset.z * scale)
+
+
+def apply_scale_multiplier(config: dict, rng: random.Random) -> float:
+    runtime = config.setdefault("_runtime", {})
+    base_scale = float(runtime.get("canonical_scale", canonical_world_scale(config)))
+    lo, hi = config.get("canonical", {}).get("scale_multiplier_range", [0.9, 1.1])
+    multiplier = rng.uniform(float(lo), float(hi))
+    runtime["canonical_scale_base"] = base_scale
+    runtime["canonical_scale_multiplier"] = multiplier
+    runtime["canonical_scale"] = max(base_scale * multiplier, 1e-6)
+    return float(runtime["canonical_scale"])
+
+
+def sample_target_center(
+    config: dict,
+    rng: random.Random,
+    bbox_center: Vector,
+    right: Vector,
+    forward: Vector,
+    up: Vector,
+    scale: float,
+) -> Vector:
+    jitter = config.get("canonical", {}).get("target_center_jitter", [0.15, 0.15, 0.1])
+    if not isinstance(jitter, (list, tuple)):
+        jitter = [float(jitter)] * 3
+    values = [float(jitter[i]) if i < len(jitter) else 0.0 for i in range(3)]
+    offset = (
+        right * rng.uniform(-values[0], values[0])
+        + forward * rng.uniform(-values[1], values[1])
+        + up * rng.uniform(-values[2], values[2])
+    )
+    return bbox_center + offset * scale
+
+
+def initialize_similarity_transform(
+    config: dict,
+    rng: random.Random,
+    bbox_center: Vector,
+    azimuth: float,
+    elevation: float,
+    roll: float,
+) -> dict:
+    right, up, forward = camera_axes_from_angles(azimuth, elevation, roll)
+    scale = apply_scale_multiplier(config, rng)
+    target_center = sample_target_center(config, rng, bbox_center, right, forward, up, scale)
+    transform = {
+        "canonical_center": vec_to_list(canonical_center(config)),
+        "target_center": vec_to_list(target_center),
+        "bbox_center": vec_to_list(bbox_center),
+        "scale": float(scale),
+        "scale_base": float(config.get("_runtime", {}).get("canonical_scale_base", scale)),
+        "scale_multiplier": float(config.get("_runtime", {}).get("canonical_scale_multiplier", 1.0)),
+        "rotation_degrees": {
+            "azimuth": math.degrees(azimuth),
+            "elevation": math.degrees(elevation),
+            "roll": math.degrees(roll),
+        },
+        "rotation_matrix": similarity_rotation_matrix_meta(right, forward, up),
+        "axes": {
+            "x_axis_world": vec_to_list(right),
+            "y_axis_world": vec_to_list(forward),
+            "z_axis_world": vec_to_list(up),
+        },
+        "formula": {
+            "position": "p_world = C_t + s * R * (p_canonical - C)",
+            "energy": "E_world = s^2 * E_canonical",
+            "radius": "d_world = s * d_canonical",
+        },
+    }
+    config.setdefault("_runtime", {})["similarity_transform"] = transform
+    return transform
+
+
 def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy.types.Object, dict]:
     cam_cfg = config["camera"]
     fov = math.radians(float(cam_cfg.get("fov_degrees", 39.6)))
     az = math.radians(rng.uniform(*cam_cfg.get("azimuth_degrees_range", [-35.0, 35.0])))
     el = math.radians(rng.uniform(*cam_cfg.get("elevation_degrees_range", [4.0, 24.0])))
-    view_direction = Vector(
-        (
-            math.cos(el) * math.sin(az),
-            -math.cos(el) * math.cos(az),
-            math.sin(el),
-        )
-    ).normalized()
+    roll_lo, roll_hi = cam_cfg.get("roll_degrees_range", [-180.0, 180.0])
+    roll = math.radians(rng.uniform(float(roll_lo), float(roll_hi)))
 
     canonical_distance = None
     camera_position_can = None
     rig_scale = canonical_world_scale(config)
     if uses_canonical_camera_rig(config):
         camera_position_can = canonical_camera_position(config, rng)
-        camera_offset_can = camera_position_can - canonical_center(config)
-        if abs(float(camera_offset_can.x)) > 1e-6 or abs(float(camera_offset_can.z)) > 1e-6:
-            raise ValueError("canonical camera rig currently expects camera.canonical_position to lie on the y axis.")
-        canonical_distance = abs(float(camera_offset_can.y))
-        distance = canonical_distance * rig_scale
-        look_target = center
+        transform = initialize_similarity_transform(config, rng, center, az, el, roll)
+        rig_scale = float(transform["scale"])
+        location = transformed_canonical_point(config, camera_position_can)
+        look_target = Vector(transform["target_center"])
+        canonical_distance = float((camera_position_can - canonical_center(config)).length)
+        distance = float((location - look_target).length)
+        right, forward, up = similarity_axes_from_meta(transform)
     else:
         distance = rng.uniform(*cam_cfg.get("distance_range", [2.8, 3.6]))
         jitter = float(cam_cfg.get("look_at_jitter", 0.06))
         look_target = center + Vector((rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter), rng.uniform(-jitter, jitter)))
+        view_direction = Vector(
+            (
+                math.cos(el) * math.sin(az),
+                -math.cos(el) * math.cos(az),
+                math.sin(el),
+            )
+        ).normalized()
+        location = center + view_direction * distance
+        right, up, forward = camera_axes_from_angles(az, el, roll)
 
-    location = center + view_direction * distance
     cam_data = bpy.data.cameras.new("Camera")
     cam = bpy.data.objects.new("Camera", cam_data)
     bpy.context.collection.objects.link(cam)
     cam.location = location
     cam_data.angle = fov
-    look_at(cam, look_target)
+    if uses_canonical_camera_rig(config):
+        set_camera_axes(cam, right, up, forward)
+    else:
+        look_at(cam, look_target)
     bpy.context.scene.camera = cam
 
     meta = {
@@ -1140,11 +1401,13 @@ def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy
         "distance": distance,
         "azimuth_degrees": math.degrees(az),
         "elevation_degrees": math.degrees(el),
+        "roll_degrees": math.degrees(roll),
         "mode": str(cam_cfg.get("mode", canonical_mapping(config))),
         "canonical_distance": canonical_distance,
         "canonical_position": vec_to_list(camera_position_can) if camera_position_can is not None else None,
         "canonical_scale": rig_scale,
         "distance_over_scale": float(distance / max(rig_scale, 1e-6)),
+        "similarity_transform": config.get("_runtime", {}).get("similarity_transform"),
     }
     return cam, meta
 
@@ -1282,6 +1545,9 @@ def canonical_world_scale(config: dict) -> float:
 
 
 def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, center: Vector) -> Vector:
+    if config.get("_runtime", {}).get("similarity_transform") and canonical_mapping(config) != "camera_frustum":
+        return transformed_canonical_point(config, p)
+
     right, up, forward = camera_basis(camera)
     offset = Vector((float(p[0]), float(p[1]), float(p[2]))) - canonical_center(config)
     mapping = canonical_mapping(config)
@@ -1304,13 +1570,20 @@ def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, c
 
 
 def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vector) -> dict:
-    right, up, forward = camera_basis(camera)
+    similarity = config.get("_runtime", {}).get("similarity_transform")
+    if similarity:
+        right, forward, up = similarity_axes_from_meta(similarity)
+    else:
+        right, up, forward = camera_basis(camera)
     scale = float(canonical_world_scale(config))
-    camera_depth = max((Vector(center) - Vector(camera.location)).dot(forward), 0.0)
-    return {
+    depth_center = Vector(similarity["target_center"]) if similarity else Vector(center)
+    camera_depth = max((depth_center - Vector(camera.location)).dot(forward), 0.0)
+    meta = {
         "target_center": vec_to_list(center),
         "canonical_center": vec_to_list(canonical_center(config)),
         "scale": scale,
+        "scale_base": config.get("_runtime", {}).get("canonical_scale_base"),
+        "scale_multiplier": config.get("_runtime", {}).get("canonical_scale_multiplier"),
         "scale_rule": config["canonical"].get("scale_rule", "bbox_max_extent"),
         "mapping": config["canonical"].get("mapping", "canonical_rig"),
         "image_plane_fraction": config["canonical"].get("image_plane_fraction"),
@@ -1322,6 +1595,12 @@ def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vec
         "y_axis_world": vec_to_list(forward),
         "z_axis_world": vec_to_list(up),
     }
+    if similarity:
+        meta["similarity_transform"] = similarity
+        meta["target_center"] = similarity["target_center"]
+        meta["rotation_matrix"] = similarity["rotation_matrix"]
+        meta["rotation_degrees"] = similarity["rotation_degrees"]
+    return meta
 
 
 def set_hdri_world(hdri_path: str | None, strength: float, rotation_z: float, fallback_color: list[float]) -> dict:
@@ -1469,6 +1748,177 @@ def sample_spatial_light_settings(spatial: dict, rng: random.Random, world_scale
         "world_energy": base_energy * world_scale * world_scale,
         "canonical_radius": canonical_radius,
         "world_radius": canonical_radius * world_scale,
+    }
+
+
+def control_values(config: dict, default: list[float] | None = None) -> list[float]:
+    values = config.get("values", config.get("levels"))
+    if values is None:
+        count = int(config.get("count", 6))
+        if default is not None and count == len(default):
+            values = default
+        else:
+            values = [0.0] if count <= 1 else [i / float(count - 1) for i in range(count)]
+    return [float(value) for value in values]
+
+
+def normalize_control_value(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
+
+
+def lerp_range(value: float, range_value: list[float] | tuple[float, ...]) -> float:
+    lo = float(range_value[0])
+    hi = float(range_value[1])
+    return lo + normalize_control_value(value) * (hi - lo)
+
+
+def per_light_diffuse_config(spatial: dict) -> dict:
+    raw = spatial.get("per_light_diffuse", {})
+    config = dict(raw) if isinstance(raw, dict) else {"enabled": bool(raw)}
+    config.setdefault("enabled", bool(spatial.get("render_diffuse_variants", False)))
+    config.setdefault("values", [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    config.setdefault("radius_range", spatial.get("per_light_diffuse_radius_range", spatial.get("radius_range", [0.02, 0.25])))
+    config.setdefault("radius_mapping", "linear")
+    return config
+
+
+def global_diffuse_config(config: dict) -> dict:
+    raw = config.get("global_diffuse", {})
+    result = dict(raw) if isinstance(raw, dict) else {"enabled": bool(raw)}
+    result.setdefault("enabled", False)
+    result.setdefault("values", [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    result.setdefault("implementation", "dominant_area_light_spread")
+    result.setdefault("constant_ambient_color", [0.72, 0.72, 0.72])
+    result.setdefault("constant_ambient_strength", 0.35)
+    result.setdefault("area_light_canonical_position", [-0.45, -0.65, 1.15])
+    result.setdefault("area_light_energy", 650.0)
+    result.setdefault("spread_degrees_range", [6.0, 70.0])
+    result.setdefault("energy_scale_with_scene", True)
+    result.setdefault("complete_target_variants", False)
+    return result
+
+
+def radius_for_diffuse_level(value: float, config: dict) -> float:
+    t = normalize_control_value(value)
+    if str(config.get("radius_mapping", "linear")).lower() in {"quadratic", "squared"}:
+        t = t * t
+    radius_range = config.get("radius_range", [0.02, 0.25])
+    return float(radius_range[0]) + t * (float(radius_range[1]) - float(radius_range[0]))
+
+
+def spread_degrees_for_diffuse_level(value: float, config: dict) -> float:
+    return lerp_range(value, config.get("spread_degrees_range", [6.0, 70.0]))
+
+
+def area_size_for_spread(location: Vector, target: Vector, spread_degrees: float) -> tuple[float, float]:
+    distance = max(float((location - target).length), 0.1)
+    size = 2.0 * distance * math.tan(math.radians(float(spread_degrees)) * 0.5)
+    return max(size, 0.001), distance
+
+
+def set_ambient_source_from_meta(source: dict, config: dict) -> dict:
+    fallback_color = config.get("ambient", {}).get("fallback_color", [0.78, 0.78, 0.78])
+    source_type = str(source.get("type", "")).lower()
+    if source_type == "hdri":
+        return set_hdri_world(source.get("path"), float(source.get("strength", 1.0)), float(source.get("rotation_z", 0.0)), fallback_color)
+    if source_type == "constant":
+        set_constant_world(tuple(source.get("color", fallback_color)), float(source.get("strength", 1.0)))
+    return source
+
+
+def round_even(value: float, minimum: int) -> int:
+    rounded = max(int(round(value)), int(minimum))
+    return rounded + (rounded % 2)
+
+
+def hdri_blur_size(width: int, height: int, dg: float, diffuse: dict) -> tuple[int, int]:
+    min_width = max(int(diffuse.get("hdri_blur_min_width", 16)), 2)
+    min_height = max(int(diffuse.get("hdri_blur_min_height", 8)), 2)
+    t = normalize_control_value(dg)
+    target_width = int(round(float(width) * ((float(min_width) / max(float(width), 1.0)) ** t)))
+    target_height = int(round(float(height) * ((float(min_height) / max(float(height), 1.0)) ** t)))
+    return min(width, round_even(target_width, min_width)), min(height, round_even(target_height, min_height))
+
+
+def hdri_blur_cache_root(scene_dir: Path) -> Path:
+    output_root = scene_dir.parents[1] if len(scene_dir.parents) > 1 else scene_dir.parent
+    return output_root / "hdri_blur_cache"
+
+
+def average_hdri_to_size(src_pixels: array, width: int, height: int, channels: int, target_width: int, target_height: int) -> array:
+    dst_pixels = array("f", [0.0]) * (target_width * target_height * 4)
+    channels = max(int(channels), 1)
+    for ty in range(target_height):
+        y0 = int(ty * height / target_height)
+        y1 = max(int((ty + 1) * height / target_height), y0 + 1)
+        y1 = min(y1, height)
+        for tx in range(target_width):
+            x0 = int(tx * width / target_width)
+            x1 = max(int((tx + 1) * width / target_width), x0 + 1)
+            x1 = min(x1, width)
+            sums = [0.0, 0.0, 0.0]
+            count = 0
+            for sy in range(y0, y1):
+                row_offset = sy * width * channels
+                for sx in range(x0, x1):
+                    offset = row_offset + sx * channels
+                    sums[0] += float(src_pixels[offset])
+                    sums[1] += float(src_pixels[offset + min(1, channels - 1)])
+                    sums[2] += float(src_pixels[offset + min(2, channels - 1)])
+                    count += 1
+            inv_count = 1.0 / max(float(count), 1.0)
+            dst_offset = (ty * target_width + tx) * 4
+            dst_pixels[dst_offset] = sums[0] * inv_count
+            dst_pixels[dst_offset + 1] = sums[1] * inv_count
+            dst_pixels[dst_offset + 2] = sums[2] * inv_count
+            dst_pixels[dst_offset + 3] = 1.0
+    return dst_pixels
+
+
+def make_blurred_hdri_variant(scene_dir: Path, hdri_path: str, dg: float, diffuse: dict) -> dict:
+    source_path = Path(hdri_path).resolve()
+    source_hash = hashlib.sha1(str(source_path).encode("utf-8")).hexdigest()[:12]
+    src = bpy.data.images.load(str(source_path), check_existing=True)
+    width, height = int(src.size[0]), int(src.size[1])
+    channels = int(src.channels)
+    target_width, target_height = hdri_blur_size(width, height, dg, diffuse)
+    cache_dir = hdri_blur_cache_root(scene_dir) / f"{source_path.stem}_{source_hash}"
+    cache_path = cache_dir / f"dg_{float(dg):.3f}_{target_width}x{target_height}.exr"
+    if cache_path.exists():
+        return {
+            "path": str(cache_path),
+            "source_path": str(source_path),
+            "source_resolution": [width, height],
+            "resolution": [target_width, target_height],
+            "blur_method": "latlong_downsample_average",
+            "cached": True,
+        }
+
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    src_pixels = array("f", [0.0]) * (width * height * channels)
+    src.pixels.foreach_get(src_pixels)
+    dst_pixels = average_hdri_to_size(src_pixels, width, height, channels, target_width, target_height)
+    dst = bpy.data.images.new(
+        f"TL_hdri_dg_{float(dg):.3f}_{target_width}x{target_height}",
+        width=target_width,
+        height=target_height,
+        alpha=True,
+        float_buffer=True,
+    )
+    try:
+        dst.pixels.foreach_set(dst_pixels)
+        dst.filepath_raw = str(cache_path)
+        dst.file_format = "OPEN_EXR"
+        dst.save()
+    finally:
+        bpy.data.images.remove(dst)
+    return {
+        "path": str(cache_path),
+        "source_path": str(source_path),
+        "source_resolution": [width, height],
+        "resolution": [target_width, target_height],
+        "blur_method": "latlong_downsample_average",
+        "cached": False,
     }
 
 
@@ -2066,6 +2516,91 @@ def render_object_mask(scene_dir: Path, subject_objects: list[bpy.types.Object])
     return rel_path
 
 
+def render_global_diffuse_components(
+    scene_dir: Path,
+    config: dict,
+    camera: bpy.types.Object,
+    center: Vector,
+    ambient_source_meta: dict,
+    ambient_output: dict,
+) -> dict | None:
+    diffuse = global_diffuse_config(config)
+    if not bool(diffuse.get("enabled", False)):
+        return None
+
+    values = control_values(diffuse, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ambient_color = tuple(float(c) for c in diffuse.get("constant_ambient_color", [0.72, 0.72, 0.72])[:3])
+    ambient_strength = float(diffuse.get("constant_ambient_strength", 0.35))
+    p_can = diffuse.get("area_light_canonical_position", [-0.45, -0.65, 1.15])
+    p_world = canonical_to_world(p_can, camera, config, center)
+    canonical_energy = float(diffuse.get("area_light_energy", 650.0))
+    world_scale = canonical_world_scale(config)
+    world_energy = canonical_energy * world_scale * world_scale if bool(diffuse.get("energy_scale_with_scene", True)) else canonical_energy
+    variants = []
+
+    remove_all_lights()
+    set_constant_world(ambient_color, ambient_strength)
+    diffuse_ambient_output = render_component(scene_dir, "global_diffuse/ambient_constant", config)
+
+    remove_all_lights()
+    set_black_world()
+    with progress_bar(values, total=len(values), desc=f"{scene_dir.name} global diffuse", unit="dg") as pbar:
+        for i, dg in enumerate(pbar):
+            pbar.set_postfix(dg=f"{float(dg):.2f}")
+            spread_degrees = spread_degrees_for_diffuse_level(float(dg), diffuse)
+            area_size, distance = area_size_for_spread(p_world, center, spread_degrees)
+            light = create_area_light(
+                f"TL_GlobalDiffuse_Area_{i:03d}",
+                p_world,
+                center,
+                world_energy,
+                area_size,
+            )
+            output = render_component(scene_dir, f"global_diffuse/spread_{i:03d}", config)
+            bpy.data.objects.remove(light, do_unlink=True)
+            variant = {
+                "id": i,
+                "dg": float(dg),
+                "normalized_diffuse": float(dg),
+                "spread_degrees": float(spread_degrees),
+                "area_size": float(area_size),
+                "distance": float(distance),
+                "complete_target": False,
+            }
+            variant.update(component_meta(output))
+            variants.append(variant)
+
+    set_ambient_source_from_meta(ambient_source_meta, config)
+    remove_all_lights()
+    return {
+        "ambient_render": diffuse_ambient_output["primary"],
+        "ambient_output": component_meta(diffuse_ambient_output),
+        "ambient_source": {
+            "type": "constant",
+            "color": list(ambient_color),
+            "strength": ambient_strength,
+        },
+        "base_variant_id": 0,
+        "implementation": str(diffuse.get("implementation", "dominant_area_light_spread")),
+        "ambient_source_type": "constant",
+        "complete_target_variants": False,
+        "light": {
+            "type": "area",
+            "canonical_position": [float(p_can[0]), float(p_can[1]), float(p_can[2])],
+            "world_position": vec_to_list(p_world),
+            "target": vec_to_list(center),
+            "canonical_energy": canonical_energy,
+            "world_energy": float(world_energy),
+            "color": [1.0, 1.0, 1.0],
+        },
+        "spread_degrees_range": [float(v) for v in diffuse.get("spread_degrees_range", [6.0, 70.0])],
+        "intensity_range": diffuse.get("intensity_range", [0.85, 1.15]),
+        "ambient_scale_range": diffuse.get("ambient_scale_range", [0.85, 1.15]),
+        "values": [float(value) for value in values],
+        "variants": variants,
+    }
+
+
 def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> dict:
     ambient_source = str(config.get("_ambient_source", "hdri")).lower()
     point_light_mode = str(config.get("_point_light_mode", "component")).lower()
@@ -2084,6 +2619,7 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     ambient_render = ambient_output["primary"]
     ambient_png = f"../preview/{scene_dir.name}_ambient.png"
     write_component_preview_png(scene_dir, ambient_output, ambient_png, config)
+    global_diffuse_meta = render_global_diffuse_components(scene_dir, config, camera, center, source, ambient_output)
     positions = sample_spatial_positions(config, rng)
     light_position_preview = None
     if config.get("_light_preview", False):
@@ -2104,6 +2640,10 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
     invalid_reference_source: str | None = "spatial/ambient" if include_ambient_in_point_lights else None
     transform_meta = canonical_transform_meta(config, camera, center)
     world_scale = float(transform_meta["scale"])
+    filter_receiver_bounds = bool(spatial.get("receiver_bounds_filter", False))
+    per_light_diffuse = per_light_diffuse_config(spatial)
+    per_light_diffuse_enabled = bool(per_light_diffuse.get("enabled", False))
+    per_light_diffuse_values = control_values(per_light_diffuse, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
         for light_index, p_can in enumerate(pbar):
             pbar.set_postfix(light=f"{light_index:03d}")
@@ -2112,7 +2652,10 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
             light_settings = sample_spatial_light_settings(spatial, rng, world_scale)
             canonical_radius = float(light_settings["canonical_radius"])
             world_radius = float(light_settings["world_radius"])
-            valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
+            if filter_receiver_bounds:
+                valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
+            else:
+                valid, skip_reason = True, None
             copied_from = None
             if valid:
                 light = create_point_light(
@@ -2131,6 +2674,36 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
                 else:
                     light_output = copy_component(scene_dir, invalid_reference_source, rel_base, config)
                     copied_from = f"{invalid_reference_source}.{primary_component_format(config)}"
+            diffuse_variants = []
+            if per_light_diffuse_enabled:
+                for variant_index, d_value in enumerate(per_light_diffuse_values):
+                    variant_radius = radius_for_diffuse_level(d_value, per_light_diffuse)
+                    variant_world_radius = variant_radius * world_scale
+                    variant_base = f"{rel_base}/d_{variant_index:03d}"
+                    variant_copied_from = None
+                    if valid:
+                        light = create_point_light(
+                            f"TL_Point_{light_index:03d}_D_{variant_index:03d}",
+                            p_world,
+                            float(light_settings["world_energy"]),
+                            variant_world_radius,
+                            light_settings["component_color"],
+                        )
+                        variant_output = render_component(scene_dir, variant_base, config)
+                        bpy.data.objects.remove(light, do_unlink=True)
+                    else:
+                        variant_output = copy_component(scene_dir, invalid_reference_source or rel_base, variant_base, config)
+                        variant_copied_from = f"{invalid_reference_source or rel_base}.{primary_component_format(config)}"
+                    variant_meta = {
+                        "id": variant_index,
+                        "d": float(d_value),
+                        "normalized_diffuse": float(d_value),
+                        "canonical_radius": float(variant_radius),
+                        "world_radius": float(variant_world_radius),
+                        "copied_from": variant_copied_from,
+                    }
+                    variant_meta.update(component_meta(variant_output))
+                    diffuse_variants.append(variant_meta)
             light_meta = {
                 "id": light_index,
                 "canonical_position": p_can,
@@ -2146,6 +2719,8 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
                 "world_radius": world_radius,
             }
             light_meta.update(component_meta(light_output))
+            if diffuse_variants:
+                light_meta["diffuse_variants"] = diffuse_variants
             lights_meta.append(light_meta)
     return {
         "ambient_render": ambient_render,
@@ -2153,12 +2728,14 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "ambient_png": ambient_png,
         "light_position_preview": light_position_preview,
         "ambient_source": source,
+        "global_diffuse": global_diffuse_meta,
         "pbr_maps": pbr_maps,
         "light_volume_center": vec_to_list(center),
         "light_volume_center_source": config.get("_runtime", {}).get("light_volume_center_source", "bbox_center"),
         "light_volume_adjustment": config.get("_runtime", {}).get("light_volume_adjustment"),
         "canonical_transform": transform_meta,
         "receiver_bounds": receiver_bounds_to_meta(receiver_bounds) if receiver_bounds else None,
+        "receiver_bounds_filter": filter_receiver_bounds,
         "receiver_materials": receiver_materials,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
         "position_sampling": spatial.get("sampling", "stratified_random"),
@@ -2174,6 +2751,12 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "color_range": spatial.get("color_range"),
         "intensity_range": spatial.get("intensity_range"),
         "radius_range": spatial.get("radius_range"),
+        "per_light_diffuse": {
+            "enabled": per_light_diffuse_enabled,
+            "values": [float(value) for value in per_light_diffuse_values],
+            "radius_range": per_light_diffuse.get("radius_range"),
+            "radius_mapping": per_light_diffuse.get("radius_mapping", "linear"),
+        },
         "point_lights": lights_meta,
     }
 
@@ -2199,8 +2782,7 @@ def render_diffuse_components(scene_dir: Path, config: dict, rng: random.Random,
         for i, spread_deg in enumerate(pbar):
             pbar.set_postfix(spread=f"{i:03d}")
             t = 0.0 if float(spread_max) == float(spread_min) else (spread_deg - float(spread_min)) / (float(spread_max) - float(spread_min))
-            distance = max((p_world - center).length, 0.1)
-            area_size = 2.0 * distance * math.tan(math.radians(spread_deg) * 0.5)
+            area_size, distance = area_size_for_spread(p_world, center, spread_deg)
             light = create_area_light(
                 f"TL_Diffuse_Area_{i:03d}",
                 p_world,
@@ -2295,6 +2877,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
                 "bbox_min": vec_to_list(bbox_min),
                 "bbox_max": vec_to_list(bbox_max),
                 "center": vec_to_list(center),
+                "orientation": config.get("_runtime", {}).get("object_orientation"),
             },
             "camera": camera_meta,
             "render": {
@@ -2332,6 +2915,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
             "bbox_min": vec_to_list(bbox_min),
             "bbox_max": vec_to_list(bbox_max),
             "center": vec_to_list(center),
+            "orientation": config.get("_runtime", {}).get("object_orientation"),
         },
         "camera": camera_meta,
         "render": {
@@ -2519,6 +3103,12 @@ def main() -> int:
         config["output_root"] = args.output
     if args.component_format is not None:
         config["render"]["component_format"] = args.component_format
+    if args.positions_per_scene is not None:
+        config["spatial"]["positions_per_scene"] = args.positions_per_scene
+    if args.global_diffuse is not None:
+        config.setdefault("global_diffuse", {})["enabled"] = bool(args.global_diffuse)
+    if args.per_light_diffuse is not None:
+        config.setdefault("spatial", {}).setdefault("per_light_diffuse", {})["enabled"] = bool(args.per_light_diffuse)
     config["_component_format"] = str(config["render"].get("component_format", "exr")).lower()
     config["_ambient_source"] = (
         args.ambient_source
@@ -2578,6 +3168,8 @@ def main() -> int:
         "paper_defaults": {
             "spatial_positions_per_scene": config["spatial"].get("positions_per_scene", 64),
             "diffuse_spread_count": config["diffuse"].get("spread_count", 6),
+            "global_diffuse_count": len(control_values(global_diffuse_config(config))) if global_diffuse_config(config).get("enabled") else 0,
+            "per_light_diffuse_count": len(control_values(per_light_diffuse_config(config["spatial"]))) if per_light_diffuse_config(config["spatial"]).get("enabled") else 0,
             "fov_degrees": config["camera"].get("fov_degrees", 39.6),
             "linear_rgb_components": True,
             "component_format": config["_component_format"],

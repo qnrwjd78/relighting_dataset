@@ -34,6 +34,10 @@
       4.0,
       24.0
     ],
+    "roll_degrees_range": [
+      -180.0,
+      180.0
+    ],
     "look_at_jitter": 0.0,
     "mode": "canonical_rig",
     "canonical_distance_range": [
@@ -173,6 +177,15 @@
     "reference_object_size": 1.2,
     "scale_rule": "bbox_max_extent",
     "scale_margin": 1.25,
+    "scale_multiplier_range": [
+      0.9,
+      1.1
+    ],
+    "target_center_jitter": [
+      0.15,
+      0.15,
+      0.1
+    ],
     "min_world_scale": 0.45,
     "position_range": {
       "x": [
@@ -195,7 +208,7 @@
   "spatial": {
     "enabled": true,
     "positions_per_scene": 64,
-    "sampling": "jittered_grid",
+    "sampling": "uniform_random",
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "fixed_radius": 0.06,
@@ -230,6 +243,7 @@
       1.0
     ],
     "include_hdri_in_point_lights": false,
+    "receiver_bounds_filter": false,
     "grid_resolution": 4,
     "jitter": 0.8,
     "min_position_distance": 0.05

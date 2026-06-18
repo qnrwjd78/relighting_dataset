@@ -73,6 +73,10 @@ def parse_args() -> argparse.Namespace:
         help="Render point-light PNGs as final targets with ambient lighting included, or isolated point-light components.",
     )
     parser.add_argument("--hdri-mode", choices=["on", "off", "random"], default="on")
+    parser.add_argument("--global-diffuse", dest="global_diffuse", action="store_true", default=None)
+    parser.add_argument("--no-global-diffuse", dest="global_diffuse", action="store_false")
+    parser.add_argument("--per-light-diffuse", dest="per_light_diffuse", action="store_true", default=None)
+    parser.add_argument("--no-per-light-diffuse", dest="per_light_diffuse", action="store_false")
     parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip point-light components.")
     parser.add_argument("--light-preview", action="store_true", default=True)
     parser.add_argument("--no-light-preview", action="store_false", dest="light_preview")
@@ -332,6 +336,10 @@ def load_runtime_config(config_path: Path, args: argparse.Namespace) -> dict:
     config["render"]["component_format"] = args.component_format
     if args.positions_per_scene is not None:
         config["spatial"]["positions_per_scene"] = args.positions_per_scene
+    if args.global_diffuse is not None:
+        config.setdefault("global_diffuse", {})["enabled"] = bool(args.global_diffuse)
+    if args.per_light_diffuse is not None:
+        config.setdefault("spatial", {}).setdefault("per_light_diffuse", {})["enabled"] = bool(args.per_light_diffuse)
     config["_component_format"] = args.component_format
     config["_ambient_source"] = args.ambient_source
     config["_point_light_mode"] = args.point_light_mode

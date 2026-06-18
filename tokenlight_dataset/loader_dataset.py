@@ -7,19 +7,16 @@ from typing import Any
 
 import numpy as np
 
-from .exr_io import read_exr
-from .tonemap import reinhard
-
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 
 
-class TokenLightComponentDataset:
-    """On-the-fly pair synthesis from TokenLight-style linear EXR components.
+class TokenLightPNGLoaderDataset:
+    """On-the-fly pair synthesis from TokenLight-style PNG components.
 
-    Returns images normalized to [-1, 1], matching common diffusion training
-    conventions. Conditions are intentionally plain dictionaries so model code
-    can choose its own tokenization.
+    This mirrors TokenLightComponentDataset but reads PNG components and blends
+    them in display space. It is useful for fast preview/prototype training.
+    For physically correct light arithmetic, use linear EXR components instead.
     """
 
     def __init__(
@@ -75,18 +72,20 @@ class TokenLightComponentDataset:
                 else:
                     raise ValueError(f"Unknown mode: {mode}")
                 condition["scene_id"] = meta["scene_id"]
+                condition["component_format"] = "png"
+                condition["blend_space"] = "display_png"
                 return self._pack(input_img, target_img, condition)
             except Exception:
                 continue
-        raise RuntimeError("Failed to sample a valid TokenLight pair after 30 attempts")
+        raise RuntimeError("Failed to sample a valid TokenLight PNG pair after 30 attempts")
 
     def _load_meta(self, scene_dir: Path) -> dict:
         with (scene_dir / "meta.json").open("r", encoding="utf-8") as f:
             return json.load(f)
 
     def _pack(self, input_img: np.ndarray, target_img: np.ndarray, condition: dict) -> dict[str, Any]:
-        input_chw = np.transpose(input_img * 2.0 - 1.0, (2, 0, 1)).astype(np.float32)
-        target_chw = np.transpose(target_img * 2.0 - 1.0, (2, 0, 1)).astype(np.float32)
+        input_chw = np.transpose(clip01(input_img) * 2.0 - 1.0, (2, 0, 1)).astype(np.float32)
+        target_chw = np.transpose(clip01(target_img) * 2.0 - 1.0, (2, 0, 1)).astype(np.float32)
         if not self.return_torch:
             return {"input": input_chw, "target": target_chw, "condition": condition}
         try:
@@ -101,25 +100,18 @@ class TokenLightComponentDataset:
 
     def _sample_spatial(self, scene_dir: Path, meta: dict, rng: random.Random):
         spatial = meta["spatial"]
-        ambient = read_exr(scene_dir / spatial["ambient_render"])
-        lights = [
-            light
-            for light in spatial["point_lights"]
-            if light.get("valid", True) and light.get("render")
-        ]
-        if not lights:
-            raise RuntimeError(f"No valid spatial point lights in {scene_dir}")
+        ambient = read_png_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
+        lights = valid_lights(spatial)
         selected = rng.sample(lights, k=min(rng.randint(1, max(1, self.max_lights)), len(lights)))
         ambient_scale = rng.uniform(0.25, 1.15)
-        target_linear = ambient_scale * ambient
+        target = ambient_scale * ambient
         condition_lights = []
-        intensity_range = spatial.get("intensity_range", [0.15, 1.25])
-        intensity_lo, intensity_hi = float(intensity_range[0]), float(intensity_range[1])
+        intensity_lo, intensity_hi = intensity_range(spatial, [0.15, 1.25])
         for light in selected:
-            contrib = read_spatial_light_component(scene_dir, spatial, light, ambient)
+            component = read_spatial_png_component(scene_dir, spatial, light, ambient)
             color = sample_color(rng)
             intensity = rng.uniform(intensity_lo, intensity_hi)
-            target_linear += intensity * contrib * color.reshape(1, 1, 3)
+            target += intensity * component * color.reshape(1, 1, 3)
             condition_lights.append(
                 {
                     "position": light["canonical_position"],
@@ -129,37 +121,28 @@ class TokenLightComponentDataset:
                     "base_energy": light.get("canonical_energy"),
                 }
             )
-        return reinhard(ambient), reinhard(target_linear), {"task": "spatial", "ambient_scale": ambient_scale, "lights": condition_lights}
+        return clip01(ambient), clip01(target), {"task": "spatial", "ambient_scale": ambient_scale, "lights": condition_lights}
 
     def _sample_color_mix(self, scene_dir: Path, meta: dict, rng: random.Random):
         spatial = meta["spatial"]
-        ambient = read_exr(scene_dir / spatial["ambient_render"])
-        lights = [
-            light
-            for light in spatial["point_lights"]
-            if light.get("valid", True) and light.get("render")
-        ]
-        if not lights:
-            raise RuntimeError(f"No valid spatial point lights in {scene_dir}")
-
+        ambient = read_png_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
+        lights = valid_lights(spatial)
         max_mix_lights = min(max(2, self.max_lights), len(lights))
         light_count = rng.randint(1 if len(lights) == 1 else 2, max_mix_lights)
         selected = rng.sample(lights, k=light_count)
         ambient_scale = rng.uniform(0.35, 1.05)
-        input_linear = ambient_scale * ambient
-        target_linear = ambient_scale * ambient
-
-        intensity_range = spatial.get("intensity_range", [0.15, 1.25])
-        intensity_lo, intensity_hi = float(intensity_range[0]), float(intensity_range[1])
+        input_img = ambient_scale * ambient
+        target_img = ambient_scale * ambient
         condition_lights = []
+        intensity_lo, intensity_hi = intensity_range(spatial, [0.15, 1.25])
         for light in selected:
-            component = read_spatial_light_component(scene_dir, spatial, light, ambient)
+            component = read_spatial_png_component(scene_dir, spatial, light, ambient)
             color_in = sample_color(rng)
             color_out = sample_color(rng)
             intensity_in = rng.uniform(intensity_lo, intensity_hi)
             intensity_out = rng.uniform(intensity_lo, intensity_hi)
-            input_linear += intensity_in * component * color_in.reshape(1, 1, 3)
-            target_linear += intensity_out * component * color_out.reshape(1, 1, 3)
+            input_img += intensity_in * component * color_in.reshape(1, 1, 3)
+            target_img += intensity_out * component * color_out.reshape(1, 1, 3)
             condition_lights.append(
                 {
                     "position": light["canonical_position"],
@@ -171,36 +154,24 @@ class TokenLightComponentDataset:
                     "base_energy": light.get("canonical_energy"),
                 }
             )
-
-        return (
-            reinhard(input_linear),
-            reinhard(target_linear),
-            {"task": "color_mix", "ambient_scale": ambient_scale, "lights": condition_lights},
-        )
+        return clip01(input_img), clip01(target_img), {"task": "color_mix", "ambient_scale": ambient_scale, "lights": condition_lights}
 
     def _sample_light_intensity(self, scene_dir: Path, meta: dict, rng: random.Random):
         spatial = meta["spatial"]
-        ambient = read_exr(scene_dir / spatial["ambient_render"])
-        lights = [
-            light
-            for light in spatial["point_lights"]
-            if light.get("valid", True) and light.get("render")
-        ]
-        if not lights:
-            raise RuntimeError(f"No valid spatial point lights in {scene_dir}")
-
+        ambient = read_png_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
+        lights = valid_lights(spatial)
         light_count = min(rng.randint(1, max(1, self.max_lights)), len(lights))
         selected = rng.sample(lights, k=light_count)
         ambient_scale = rng.uniform(0.35, 1.05)
-        input_linear = ambient_scale * ambient
-        target_linear = ambient_scale * ambient
+        input_img = ambient_scale * ambient
+        target_img = ambient_scale * ambient
         condition_lights = []
         for light in selected:
-            component = read_spatial_light_component(scene_dir, spatial, light, ambient)
+            component = read_spatial_png_component(scene_dir, spatial, light, ambient)
             color = sample_color(rng)
             intensity_in, intensity_out = sample_intensity_pair(rng)
-            input_linear += intensity_in * component * color.reshape(1, 1, 3)
-            target_linear += intensity_out * component * color.reshape(1, 1, 3)
+            input_img += intensity_in * component * color.reshape(1, 1, 3)
+            target_img += intensity_out * component * color.reshape(1, 1, 3)
             condition_lights.append(
                 {
                     "position": light["canonical_position"],
@@ -213,20 +184,16 @@ class TokenLightComponentDataset:
                     "base_energy": light.get("canonical_energy"),
                 }
             )
-
-        return (
-            reinhard(input_linear),
-            reinhard(target_linear),
-            {"task": "light_intensity", "ambient_scale": ambient_scale, "lights": condition_lights},
-        )
+        return clip01(input_img), clip01(target_img), {"task": "light_intensity", "ambient_scale": ambient_scale, "lights": condition_lights}
 
     def _sample_ambient(self, scene_dir: Path, meta: dict, rng: random.Random):
-        ambient = read_exr(scene_dir / meta["spatial"]["ambient_render"])
+        spatial = meta["spatial"]
+        ambient = read_png_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
         a_in = rng.uniform(0.25, 1.15)
         a_out = rng.uniform(0.05, 1.35)
         return (
-            reinhard(a_in * ambient),
-            reinhard(a_out * ambient),
+            clip01(a_in * ambient),
+            clip01(a_out * ambient),
             {"task": "ambient", "ambient_scale_in": a_in, "ambient_scale_out": a_out, "ambient_scale_delta": a_out / max(a_in, 1e-6)},
         )
 
@@ -235,18 +202,18 @@ class TokenLightComponentDataset:
             return self._sample_global_diffuse(scene_dir, meta, rng)
 
         diffuse = meta["diffuse"]
-        ambient = read_exr(scene_dir / diffuse["ambient_render"])
+        ambient = read_png_component(scene_dir, diffuse.get("ambient_output", diffuse["ambient_render"]))
         src, dst = rng.sample(diffuse["spreads"], 2)
         color = sample_color(rng)
         intensity = rng.uniform(0.25, 1.2)
         ambient_scale = rng.uniform(0.3, 1.1)
-        source = read_exr(scene_dir / src["render"])
-        target = read_exr(scene_dir / dst["render"])
-        input_linear = ambient_scale * ambient + intensity * source * color.reshape(1, 1, 3)
-        target_linear = ambient_scale * ambient + intensity * target * color.reshape(1, 1, 3)
+        source = read_png_component(scene_dir, src.get("output", src))
+        target = read_png_component(scene_dir, dst.get("output", dst))
+        input_img = ambient_scale * ambient + intensity * source * color.reshape(1, 1, 3)
+        target_img = ambient_scale * ambient + intensity * target * color.reshape(1, 1, 3)
         return (
-            reinhard(input_linear),
-            reinhard(target_linear),
+            clip01(input_img),
+            clip01(target_img),
             {
                 "task": "diffuse",
                 "spread_in": src["normalized_spread"],
@@ -269,30 +236,28 @@ class TokenLightComponentDataset:
         src, dst = rng.sample(variants, 2)
         complete_targets = bool(diffuse.get("complete_target_variants", True))
         if complete_targets:
-            source = read_exr(scene_dir / src["render"])
-            target = read_exr(scene_dir / dst["render"])
-            input_linear = source
-            target_linear = target
+            input_img = read_png_component(scene_dir, src)
+            target_img = read_png_component(scene_dir, dst)
             ambient_scale = None
             intensity = None
             color = None
         else:
-            ambient_entry = diffuse.get("ambient_render") or diffuse.get("ambient_output", {}).get("render")
-            if not ambient_entry:
-                raise RuntimeError(f"Component global_diffuse metadata needs ambient_render in {scene_dir}")
-            ambient = read_exr(scene_dir / ambient_entry)
-            source = read_exr(scene_dir / src["render"])
-            target = read_exr(scene_dir / dst["render"])
+            ambient_entry = diffuse.get("ambient_output", diffuse.get("ambient_render"))
+            if ambient_entry is None:
+                raise RuntimeError(f"Component global_diffuse metadata needs ambient_output in {scene_dir}")
+            ambient = read_png_component(scene_dir, ambient_entry)
+            source = read_png_component(scene_dir, src)
+            target = read_png_component(scene_dir, dst)
             ambient_range = diffuse.get("ambient_scale_range", [0.85, 1.15])
             intensity_range = diffuse.get("intensity_range", [0.85, 1.15])
             ambient_scale = rng.uniform(float(ambient_range[0]), float(ambient_range[1]))
             intensity = rng.uniform(float(intensity_range[0]), float(intensity_range[1]))
             color = np.asarray(diffuse.get("light", {}).get("color", [1.0, 1.0, 1.0]), dtype=np.float32).reshape(1, 1, 3)
-            input_linear = ambient_scale * ambient + intensity * source * color
-            target_linear = ambient_scale * ambient + intensity * target * color
+            input_img = ambient_scale * ambient + intensity * source * color
+            target_img = ambient_scale * ambient + intensity * target * color
         return (
-            reinhard(input_linear),
-            reinhard(target_linear),
+            clip01(input_img),
+            clip01(target_img),
             {
                 "task": "global_diffuse",
                 "dg_in": float(src.get("dg", src.get("normalized_diffuse", 0.0))),
@@ -310,7 +275,7 @@ class TokenLightComponentDataset:
 
     def _sample_per_light_diffuse(self, scene_dir: Path, meta: dict, rng: random.Random):
         spatial = meta["spatial"]
-        ambient = read_exr(scene_dir / spatial["ambient_render"])
+        ambient = read_png_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
         lights = [light for light in spatial["point_lights"] if light.get("valid", True) and light.get("diffuse_variants")]
         if not lights:
             raise RuntimeError(f"No per-light diffuse variants in {scene_dir}")
@@ -324,13 +289,13 @@ class TokenLightComponentDataset:
         color = sample_color(rng)
         intensity = rng.uniform(0.25, 1.2)
         ambient_scale = rng.uniform(0.3, 1.1)
-        source = read_spatial_light_component(scene_dir, spatial, light, ambient, src)
-        target = read_spatial_light_component(scene_dir, spatial, light, ambient, dst)
-        input_linear = ambient_scale * ambient + intensity * source * color.reshape(1, 1, 3)
-        target_linear = ambient_scale * ambient + intensity * target * color.reshape(1, 1, 3)
+        source = read_spatial_png_component(scene_dir, spatial, light, ambient, src)
+        target = read_spatial_png_component(scene_dir, spatial, light, ambient, dst)
+        input_img = ambient_scale * ambient + intensity * source * color.reshape(1, 1, 3)
+        target_img = ambient_scale * ambient + intensity * target * color.reshape(1, 1, 3)
         return (
-            reinhard(input_linear),
-            reinhard(target_linear),
+            clip01(input_img),
+            clip01(target_img),
             {
                 "task": "per_light_diffuse",
                 "position": light["canonical_position"],
@@ -347,25 +312,25 @@ class TokenLightComponentDataset:
 
     def _sample_fixture(self, scene_dir: Path, meta: dict, rng: random.Random):
         fixture_meta = meta["fixtures"]
-        env = read_exr(scene_dir / fixture_meta["environment_render"])
-        fixtures = fixture_meta["fixtures"]
+        env = read_png_component(scene_dir, fixture_meta.get("environment_output", fixture_meta["environment_render"]))
+        fixtures = [fixture for fixture in fixture_meta["fixtures"] if fixture.get("contribution_render")]
         selected = rng.choice(fixtures)
         base = env.copy()
-        others = [f for f in fixtures if f["id"] != selected["id"]]
+        others = [fixture for fixture in fixtures if fixture["id"] != selected["id"]]
         rng.shuffle(others)
         for other in others[: fixture_meta.get("max_non_selected_fixtures_in_ambient", 5)]:
             if rng.random() < 0.6:
-                base += rng.uniform(0.15, 1.0) * read_exr(scene_dir / other["contribution_render"]) * sample_color(rng).reshape(1, 1, 3)
+                base += rng.uniform(0.15, 1.0) * read_png_component(scene_dir, other.get("contribution_output", other["contribution_render"]))
         color = sample_color(rng)
         intensity = rng.uniform(0.1, 1.2)
         ambient_scale = rng.uniform(0.35, 1.1)
-        contribution = read_exr(scene_dir / selected["contribution_render"])
+        contribution = read_png_component(scene_dir, selected.get("contribution_output", selected["contribution_render"]))
         off = ambient_scale * base
         on = off + intensity * contribution * color.reshape(1, 1, 3)
         turn_on = rng.random() < 0.5
         return (
-            reinhard(off if turn_on else on),
-            reinhard(on if turn_on else off),
+            clip01(off if turn_on else on),
+            clip01(on if turn_on else off),
             {
                 "task": "fixture",
                 "fixture_id": selected["id"],
@@ -379,31 +344,26 @@ class TokenLightComponentDataset:
 
     def _sample_fixture_intensity(self, scene_dir: Path, meta: dict, rng: random.Random):
         fixture_meta = meta["fixtures"]
-        env = read_exr(scene_dir / fixture_meta["environment_render"])
+        env = read_png_component(scene_dir, fixture_meta.get("environment_output", fixture_meta["environment_render"]))
         fixtures = [fixture for fixture in fixture_meta["fixtures"] if fixture.get("contribution_render")]
-        if not fixtures:
-            raise RuntimeError(f"No fixture contribution renders in {scene_dir}")
-
         selected = rng.choice(fixtures)
         ambient_scale = rng.uniform(0.35, 1.1)
         base = ambient_scale * env
-
         others = [fixture for fixture in fixtures if fixture["id"] != selected["id"]]
         rng.shuffle(others)
         other_terms = []
         for other in others[: fixture_meta.get("max_non_selected_fixtures_in_ambient", 5)]:
             if rng.random() < 0.55:
                 other_intensity = rng.uniform(0.05, 0.9)
-                base += other_intensity * read_exr(scene_dir / other["contribution_render"])
+                base += other_intensity * read_png_component(scene_dir, other.get("contribution_output", other["contribution_render"]))
                 other_terms.append({"fixture_id": other["id"], "intensity": other_intensity})
-
-        contribution = read_exr(scene_dir / selected["contribution_render"])
+        contribution = read_png_component(scene_dir, selected.get("contribution_output", selected["contribution_render"]))
         intensity_in, intensity_out = sample_intensity_pair(rng)
-        input_linear = base + intensity_in * contribution
-        target_linear = base + intensity_out * contribution
+        input_img = base + intensity_in * contribution
+        target_img = base + intensity_out * contribution
         return (
-            reinhard(input_linear),
-            reinhard(target_linear),
+            clip01(input_img),
+            clip01(target_img),
             {
                 "task": "fixture_intensity",
                 "fixture_id": selected["id"],
@@ -416,6 +376,118 @@ class TokenLightComponentDataset:
                 "other_fixtures": other_terms,
             },
         )
+
+
+TokenLightLoaderDataset = TokenLightPNGLoaderDataset
+
+
+def valid_lights(spatial: dict) -> list[dict]:
+    lights = [light for light in spatial["point_lights"] if light.get("valid", True) and light.get("render")]
+    if not lights:
+        raise RuntimeError("No valid spatial point lights")
+    return lights
+
+
+def intensity_range(spatial: dict, fallback: list[float]) -> tuple[float, float]:
+    value = spatial.get("intensity_range", fallback)
+    return float(value[0]), float(value[1])
+
+
+def read_spatial_png_component(
+    scene_dir: Path,
+    spatial: dict,
+    light: dict,
+    ambient: np.ndarray,
+    component_entry: dict | None = None,
+) -> np.ndarray:
+    component = read_png_component(scene_dir, (component_entry or light).get("output", component_entry or light))
+    if spatial.get("point_light_output_semantics") == "ambient_plus_point_light_target":
+        component = component - ambient
+    source_color = np.asarray(light.get("component_color", [1.0, 1.0, 1.0]), dtype=np.float32)
+    source_color = np.maximum(source_color.reshape(1, 1, 3), 1e-4)
+    component = component / source_color
+    return clip01(component)
+
+
+def read_png_component(scene_dir: Path, entry: dict | str) -> np.ndarray:
+    path = resolve_component_png_path(scene_dir, entry)
+    try:
+        import imageio.v3 as iio
+
+        img = iio.imread(path)
+        return normalize_png_array(img)
+    except Exception:
+        pass
+
+    try:
+        from PIL import Image
+
+        with Image.open(path) as img:
+            return normalize_png_array(np.asarray(img.convert("RGB")))
+    except Exception:
+        pass
+
+    try:
+        import cv2
+
+        img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+        if img is None:
+            raise RuntimeError("cv2.imread returned None")
+        if img.ndim == 3 and img.shape[2] >= 3:
+            img = img[:, :, :3][:, :, ::-1]
+        return normalize_png_array(img)
+    except Exception as exc:
+        raise RuntimeError(f"Could not read PNG component {path}: {exc}") from exc
+
+
+def resolve_component_png_path(scene_dir: Path, entry: dict | str) -> Path:
+    candidates: list[str] = []
+    if isinstance(entry, dict):
+        for key in ("render_png", "png", "render"):
+            value = entry.get(key)
+            if value:
+                candidates.append(str(value))
+    else:
+        candidates.append(str(entry))
+
+    for candidate in candidates:
+        path = scene_dir / candidate
+        if path.suffix.lower() != ".png":
+            path = path.with_suffix(".png")
+        if path.exists():
+            return path
+
+    raw = candidates[0] if candidates else str(entry)
+    raise FileNotFoundError(f"No PNG component found for {raw} under {scene_dir}")
+
+
+def normalize_png_array(img: np.ndarray) -> np.ndarray:
+    img = np.asarray(img)
+    scale = float(np.iinfo(img.dtype).max) if np.issubdtype(img.dtype, np.integer) else None
+    if img.ndim == 2:
+        img = np.repeat(img[:, :, None], 3, axis=2)
+    if img.ndim != 3:
+        raise ValueError(f"Expected HxWxC PNG image, got shape {img.shape}")
+    if img.shape[2] == 4:
+        img = img[:, :, :3]
+    if img.shape[2] == 1:
+        img = np.repeat(img, 3, axis=2)
+    if img.shape[2] < 3:
+        raise ValueError(f"Expected at least 3 channels, got shape {img.shape}")
+    img = img[:, :, :3].astype(np.float32, copy=False)
+    if scale is not None and scale > 0.0:
+        img = img / scale
+    elif img.max(initial=0.0) > 1.5:
+        img = img / 255.0
+    return clip01(img)
+
+
+def clip01(img: np.ndarray) -> np.ndarray:
+    return np.nan_to_num(np.clip(img, 0.0, 1.0), nan=0.0, posinf=1.0, neginf=0.0).astype(np.float32, copy=False)
+
+
+def global_diffuse_meta(meta: dict) -> dict | None:
+    return meta.get("global_diffuse") or meta.get("spatial", {}).get("global_diffuse")
 
 
 def sample_color(rng: random.Random) -> np.ndarray:
@@ -432,21 +504,6 @@ def sample_color(rng: random.Random) -> np.ndarray:
     if rng.random() < 0.75:
         return np.array(rng.choice(palette), dtype=np.float32)
     return np.array([rng.uniform(0.45, 1.0) for _ in range(3)], dtype=np.float32)
-
-
-def read_spatial_light_component(scene_dir: Path, spatial: dict, light: dict, ambient: np.ndarray, component_entry: dict | None = None) -> np.ndarray:
-    component_entry = component_entry or light
-    component = read_exr(scene_dir / component_entry["render"])
-    if spatial.get("point_light_output_semantics") == "ambient_plus_point_light_target":
-        component = component - ambient
-    source_color = np.asarray(light.get("component_color", [1.0, 1.0, 1.0]), dtype=np.float32)
-    source_color = np.maximum(source_color.reshape(1, 1, 3), 1e-4)
-    component = component / source_color
-    return np.maximum(component, 0.0)
-
-
-def global_diffuse_meta(meta: dict) -> dict | None:
-    return meta.get("global_diffuse") or meta.get("spatial", {}).get("global_diffuse")
 
 
 def sample_intensity_pair(rng: random.Random) -> tuple[float, float]:

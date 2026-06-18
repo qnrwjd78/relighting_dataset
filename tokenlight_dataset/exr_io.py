@@ -11,6 +11,24 @@ def read_exr(path: str | Path) -> np.ndarray:
     errors: list[str] = []
 
     try:
+        import Imath
+        import OpenEXR
+
+        exr = OpenEXR.InputFile(path)
+        header = exr.header()
+        dw = header["dataWindow"]
+        width = dw.max.x - dw.min.x + 1
+        height = dw.max.y - dw.min.y + 1
+        pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
+        channels = []
+        for name in ("R", "G", "B"):
+            data = exr.channel(name, pixel_type)
+            channels.append(np.frombuffer(data, dtype=np.float32).reshape(height, width))
+        return np.stack(channels, axis=-1)
+    except Exception as exc:  # pragma: no cover - backend dependent
+        errors.append(f"OpenEXR: {exc}")
+
+    try:
         import imageio.v3 as iio
 
         img = iio.imread(path)
@@ -32,24 +50,6 @@ def read_exr(path: str | Path) -> np.ndarray:
         return _normalize_channels(img)
     except Exception as exc:  # pragma: no cover - backend dependent
         errors.append(f"opencv: {exc}")
-
-    try:
-        import Imath
-        import OpenEXR
-
-        exr = OpenEXR.InputFile(path)
-        header = exr.header()
-        dw = header["dataWindow"]
-        width = dw.max.x - dw.min.x + 1
-        height = dw.max.y - dw.min.y + 1
-        pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
-        channels = []
-        for name in ("R", "G", "B"):
-            data = exr.channel(name, pixel_type)
-            channels.append(np.frombuffer(data, dtype=np.float32).reshape(height, width))
-        return np.stack(channels, axis=-1)
-    except Exception as exc:  # pragma: no cover - backend dependent
-        errors.append(f"OpenEXR: {exc}")
 
     raise RuntimeError(f"Could not read EXR {path}. Tried: {'; '.join(errors)}")
 
