@@ -9,6 +9,8 @@ dataset/hdri/      HDRI download_*.py and preview_*.py entrypoints
 dataset/portrait/  portrait/human download_*.py and preview_*.py entrypoints
 dataset/object/    object/material download_*.py and preview_*.py entrypoints
 dataset/scene/     scene download_*.py and preview_*.py entrypoints
+dataset/indoor/    indoor scene/HDRI download_*.py, prepare_*.py, and preview_*.py entrypoints
+dataset/outdoor/   outdoor scene/HDRI download_*.py and preview_*.py entrypoints
 dataset/utils/   shared util_*.py helpers
 scripts/   render_*_relighting.py entrypoints
 scripts/utils/   shared util_*.py helpers
@@ -28,6 +30,24 @@ python3 dataset/object/download_polyhaven_textures.py --resolution 2k --format j
 python3 dataset/object/download_objaverse_xl.py --limit 5000
 python3 dataset/portrait/download_hsrd100.py --lod LOD1 --extract
 ```
+
+Prepare indoor/outdoor scene sources:
+
+```bash
+python3 dataset/indoor/download_blenderkit_indoor.py --query "living room interior" --max-results 5
+python3 dataset/outdoor/download_blenderkit_outdoor.py --query "night street" --max-results 5
+
+python3 dataset/indoor/download_sketchfab_indoor.py --max-results 50 --extract
+python3 dataset/outdoor/download_sketchfab_outdoor.py --max-results 50 --extract
+
+python3 dataset/indoor/download_polyhaven_indoor_hdri.py --per-category 30
+python3 dataset/outdoor/download_polyhaven_outdoor_hdri.py --per-category 30
+
+python3 dataset/indoor/prepare_3dfront.py --root data/indoor/3dfront
+python3 dataset/indoor/prepare_hssd.py --root data/indoor/hssd
+```
+
+3D-FRONT and HSSD require accepting their dataset terms separately; the `prepare_*.py` scripts index already-downloaded folders.
 
 Prepare portrait sources:
 

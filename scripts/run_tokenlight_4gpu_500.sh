@@ -2,7 +2,7 @@
 set -u
 
 CONFIG="${1:-configs/tokenlight_synthetic_full.json}"
-OUTPUT_PREFIX="${2:-outputs/objaverse_500/objaverse_xl}"
+OUTPUT_PREFIX="${2:-outputs/objaverse_dataset_exr}"
 ONLY="${3:-spatial}"
 COMPONENT_FORMAT="${4:-exr}"
 
@@ -15,9 +15,11 @@ SAMPLES="${SAMPLES:-32}"
 HDRI_MODE="${HDRI_MODE:-on}"
 AMBIENT_SOURCE="${AMBIENT_SOURCE:-hdri}"
 POINT_LIGHT_MODE="${POINT_LIGHT_MODE:-component}"
-POSITIONS_PER_SCENE="${POSITIONS_PER_SCENE:-}"
-GLOBAL_DIFFUSE="${GLOBAL_DIFFUSE:-0}"
+POSITIONS_PER_SCENE="${POSITIONS_PER_SCENE:-64}"
+GLOBAL_DIFFUSE="${GLOBAL_DIFFUSE:-1}"
 PER_LIGHT_DIFFUSE="${PER_LIGHT_DIFFUSE:-0}"
+LIGHT_PREVIEW="${LIGHT_PREVIEW:-1}"
+FLAT_OUTPUT="${FLAT_OUTPUT:-0}"
 BLENDER_CMD="${BLENDER_CMD:-blender}"
 LOG_DIR="${LOG_DIR:-logs/tokenlight_4gpu_500}"
 
@@ -32,6 +34,13 @@ fi
 pids=()
 names=()
 read -r -a GPU_LIST <<< "$GPUS"
+if [[ "$FLAT_OUTPUT" == "1" || "$FLAT_OUTPUT" == "true" ]]; then
+  if ((${#GPU_LIST[@]} != 1)); then
+    echo "[ERROR] FLAT_OUTPUT=1 writes directly to OUTPUT_PREFIX and requires exactly one GPU. Set GPUS=0 or FLAT_OUTPUT=0." >&2
+    exit 1
+  fi
+fi
+
 EXTRA_RELIGHTING_ARGS=()
 if [[ "$GLOBAL_DIFFUSE" == "1" || "$GLOBAL_DIFFUSE" == "true" ]]; then
   EXTRA_RELIGHTING_ARGS+=(--global-diffuse)
@@ -42,6 +51,9 @@ fi
 if [[ -n "$POSITIONS_PER_SCENE" ]]; then
   EXTRA_RELIGHTING_ARGS+=(--positions-per-scene "$POSITIONS_PER_SCENE")
 fi
+if [[ "$LIGHT_PREVIEW" == "1" || "$LIGHT_PREVIEW" == "true" ]]; then
+  EXTRA_RELIGHTING_ARGS+=(--light-preview)
+fi
 
 cleanup() {
   echo "[STOP] killing running Blender jobs..."
@@ -50,14 +62,18 @@ cleanup() {
       kill "$pid" >/dev/null 2>&1 || true
     fi
   done
-}
+} 
 trap cleanup INT TERM
 
 for idx in "${!GPU_LIST[@]}"; do
   gpu="${GPU_LIST[$idx]}"
   start=$((GLOBAL_START + idx * SCENES_PER_GPU))
   end=$((start + SCENES_PER_GPU - 1))
-  out_dir="${OUTPUT_PREFIX}/cuda${gpu}_scenes_${start}_${end}"
+  if [[ "$FLAT_OUTPUT" == "1" || "$FLAT_OUTPUT" == "true" ]]; then
+    out_dir="$OUTPUT_PREFIX"
+  else
+    out_dir="${OUTPUT_PREFIX}/cuda${gpu}_scenes_${start}_${end}"
+  fi
   log_file="${LOG_DIR}/cuda${gpu}_scenes_${start}_${end}.log"
 
   mkdir -p "$out_dir"

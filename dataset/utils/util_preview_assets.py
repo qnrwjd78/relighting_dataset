@@ -26,6 +26,8 @@ PREFERRED_EXTS = {
     "hsrd100": [".obj", ".fbx", ".glb", ".gltf", ".ply", ".stl", ".blend"],
     "objaverse_xl": [".glb", ".gltf", ".obj", ".fbx", ".ply", ".stl", ".blend"],
     "sketchfab_human": [".glb", ".gltf", ".blend", ".fbx", ".obj", ".dae", ".ply", ".stl"],
+    "sketchfab_indoor": [".blend", ".glb", ".gltf", ".fbx", ".obj", ".dae", ".ply", ".stl"],
+    "sketchfab_outdoor": [".blend", ".glb", ".gltf", ".fbx", ".obj", ".dae", ".ply", ".stl"],
     "thuman2": [".obj", ".fbx", ".glb", ".gltf", ".ply", ".stl", ".blend"],
 }
 
@@ -483,6 +485,8 @@ def main(default_dataset: str | None = None) -> int:
                         "renderpeople_free",
                         "humano_free",
                         "sketchfab_human",
+                        "sketchfab_indoor",
+                        "sketchfab_outdoor",
                         "thuman2",
                     }
                     bbox_min, bbox_max = normalize_for_preview(objects, upright=upright)
@@ -510,7 +514,7 @@ def main(default_dataset: str | None = None) -> int:
                 "source_path": str(asset),
                 "preview": str(preview_path),
                 "mtl": str(mtl_info["path"]) if mtl_info else None,
-                "asset_type": "portrait_asset",
+                "asset_type": "scene_asset" if args.dataset in {"sketchfab_indoor", "sketchfab_outdoor"} else "portrait_asset",
                 "status": status,
                 "error": error,
                 "bbox_min_preview_space": vec_to_list(bbox_min),
