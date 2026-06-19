@@ -571,6 +571,87 @@ def hsv_to_rgb(h: float, s: float, v: float) -> tuple[float, float, float]:
     return v, p, q
 
 
+
+def first_obj_value(path: Path, prefix: str) -> str | None:
+    with path.open("r", encoding="utf-8", errors="ignore") as handle:
+        for raw in handle:
+            line = raw.strip()
+            if line.startswith(prefix):
+                value = line[len(prefix) :].strip()
+                return value or None
+    return None
+
+
+def is_hsrd100_asset(path: Path) -> bool:
+    return any(part.lower() == "hsrd100" for part in path.parts)
+
+
+def find_hsrd100_diffuse_texture(asset: Path, material_name: str | None) -> Path | None:
+    suffixes = {".png", ".jpg", ".jpeg", ".tif", ".tiff"}
+    candidates: list[Path] = []
+    if material_name:
+        candidates.extend(path for path in asset.parent.glob(f"{material_name}_diffuse.*") if path.suffix.lower() in suffixes)
+    candidates.extend(path for path in asset.parent.glob(f"{asset.stem}*_diffuse.*") if path.suffix.lower() in suffixes)
+    candidates.extend(path for path in asset.parent.glob("*diffuse.*") if path.suffix.lower() in suffixes)
+    return sorted(set(candidates), key=str)[0] if candidates else None
+
+
+def objects_have_image_texture(objects: list[bpy.types.Object]) -> bool:
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        for mat in obj.data.materials:
+            if not mat or not mat.use_nodes:
+                continue
+            for node in mat.node_tree.nodes:
+                if node.bl_idname == "ShaderNodeTexImage" and node.image is not None:
+                    return True
+    return False
+
+
+def apply_image_texture_material(objects: list[bpy.types.Object], material_name: str, texture: Path) -> None:
+    mat = bpy.data.materials.new(material_name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    image_node = nodes.new("ShaderNodeTexImage")
+    image_node.image = bpy.data.images.load(str(texture), check_existing=True)
+    if image_node.image is not None:
+        image_node.image.colorspace_settings.name = "sRGB"
+    if bsdf:
+        mat.node_tree.links.new(image_node.outputs["Color"], bsdf.inputs["Base Color"])
+        if "Roughness" in bsdf.inputs:
+            bsdf.inputs["Roughness"].default_value = 0.75
+    for obj in objects:
+        if obj.type != "MESH":
+            continue
+        obj.data.materials.clear()
+        obj.data.materials.append(mat)
+
+
+def apply_hsrd100_texture(objects: list[bpy.types.Object], asset: Path) -> dict:
+    material_name = first_obj_value(asset, "usemtl ") or f"{asset.stem}_mat"
+    texture = find_hsrd100_diffuse_texture(asset, material_name)
+    meta = {
+        "dataset": "hsrd100",
+        "texture_found": texture is not None,
+        "texture_path": str(texture) if texture else None,
+        "material_name": material_name,
+        "texture_applied": False,
+        "texture_apply_reason": None,
+    }
+    if texture is None:
+        meta["texture_apply_reason"] = "missing_diffuse_texture"
+        return meta
+    if objects_have_image_texture(objects):
+        meta["texture_applied"] = True
+        meta["texture_apply_reason"] = "already_had_image_texture"
+        return meta
+    apply_image_texture_material(objects, f"TL_HSRD100_{material_name}", texture)
+    meta["texture_applied"] = True
+    meta["texture_apply_reason"] = "manual_diffuse_texture"
+    return meta
+
 def call_first_import_operator(path: Path, operator_names: list[str]) -> None:
     errors = []
     for operator_name in operator_names:
@@ -587,9 +668,12 @@ def call_first_import_operator(path: Path, operator_names: list[str]) -> None:
 
 def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: random.Random, config: dict) -> list[bpy.types.Object]:
     before = set(bpy.data.objects)
+    hsrd100_asset = False
+    hsrd100_import_meta = None
     if asset_path:
         path = Path(asset_path)
         ext = path.suffix.lower()
+        hsrd100_asset = is_hsrd100_asset(path)
         if ext == ".blend":
             with bpy.data.libraries.load(str(path), link=False) as (data_from, data_to):
                 data_to.objects = list(data_from.objects)
@@ -622,9 +706,20 @@ def import_asset_or_primitive(asset_path: str | None, primitive: str, rng: rando
                 obj.data.materials.clear()
                 obj.data.materials.append(random_material(rng, families))
 
+    if asset_path and hsrd100_asset:
+        hsrd100_import_meta = apply_hsrd100_texture(mesh_objects, path)
+
     orientation_mode = str(config["object"].get("orientation_mode", "keep") if asset_path else "keep")
+    if asset_path and hsrd100_asset and orientation_mode.lower() in {"keep", "none", "off"}:
+        orientation_mode = "longest_axis_up"
     orientation_meta = normalize_objects(mesh_objects, float(config["object"].get("target_size", 1.2)), orientation_mode)
-    config.setdefault("_runtime", {})["object_orientation"] = orientation_meta
+    runtime = config.setdefault("_runtime", {})
+    runtime["object_orientation"] = orientation_meta
+    if hsrd100_import_meta is not None:
+        hsrd100_import_meta["upright_mode"] = orientation_mode
+        runtime["object_import_adjustments"] = hsrd100_import_meta
+    else:
+        runtime.pop("object_import_adjustments", None)
     tag_objects(mesh_objects, "TL_SUBJECT")
     return mesh_objects
 
@@ -2878,6 +2973,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
                 "bbox_max": vec_to_list(bbox_max),
                 "center": vec_to_list(center),
                 "orientation": config.get("_runtime", {}).get("object_orientation"),
+                "import_adjustments": config.get("_runtime", {}).get("object_import_adjustments"),
             },
             "camera": camera_meta,
             "render": {
@@ -2916,6 +3012,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
             "bbox_max": vec_to_list(bbox_max),
             "center": vec_to_list(center),
             "orientation": config.get("_runtime", {}).get("object_orientation"),
+            "import_adjustments": config.get("_runtime", {}).get("object_import_adjustments"),
         },
         "camera": camera_meta,
         "render": {

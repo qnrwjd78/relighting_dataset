@@ -37,6 +37,11 @@ def parse_args() -> argparse.Namespace:
         default=["1,1,1", "1,0.86,0.68", "0.68,0.82,1", "1,0.34,0.24", "0.35,1,0.55", "0.25,0.5,1"],
         help="Six RGB colors for the color sequence, formatted as r,g,b values in 0..1.",
     )
+    parser.add_argument(
+        "--require-per-light-diffuse",
+        action="store_true",
+        help="Fail instead of skipping the per-light diffuse row when diffuse variants are missing.",
+    )
     parser.add_argument("--write-rows", action="store_true")
     parser.add_argument("--write-panels", action="store_true")
     return parser.parse_args()
@@ -295,6 +300,13 @@ def make_per_light_diffuse_row(scene_dir: Path, meta: dict, args: argparse.Names
     return make_row(images, labels, args.label_height, args.font_size), images, labels
 
 
+def has_per_light_diffuse_variants(scene_dir: Path, meta: dict, args: argparse.Namespace) -> bool:
+    spatial = meta["spatial"]
+    light = select_light(scene_dir, spatial, args.light_index)
+    variants = [row for row in light.get("diffuse_variants", []) if row.get("render")]
+    return len(variants) >= 2
+
+
 def normalized_values(rows: list[dict]) -> list[float]:
     raw = []
     for row in rows:
@@ -359,10 +371,27 @@ def main() -> int:
     global_diffuse_row, global_diffuse_images, global_diffuse_labels = make_global_diffuse_row(scene_dir, meta, args)
     color_row, color_images, color_labels = make_color_row(scene_dir, meta, args)
     intensity_row, intensity_images, intensity_labels = make_intensity_row(scene_dir, meta, args)
-    per_light_diffuse_row, per_light_diffuse_images, per_light_diffuse_labels = make_per_light_diffuse_row(scene_dir, meta, args)
+
+    per_light_rows = [color_row, intensity_row]
+    per_light_diffuse_row = None
+    per_light_diffuse_images: list[Image.Image] = []
+    per_light_diffuse_labels: list[str] = []
+    if has_per_light_diffuse_variants(scene_dir, meta, args):
+        per_light_diffuse_row, per_light_diffuse_images, per_light_diffuse_labels = make_per_light_diffuse_row(scene_dir, meta, args)
+        per_light_rows.append(per_light_diffuse_row)
+    elif args.require_per_light_diffuse:
+        raise RuntimeError(
+            "No per-light diffuse variants found. Re-render with --per-light-diffuse or PER_LIGHT_DIFFUSE=1."
+        )
+    else:
+        print(
+            "[WARN] No per-light diffuse variants found; skipping per-light diffuse row. "
+            "Re-render with --per-light-diffuse or PER_LIGHT_DIFFUSE=1 to include it.",
+            file=sys.stderr,
+        )
 
     global_controls = stack_rows([ambient_row, global_diffuse_row])
-    per_light_controls = stack_rows([color_row, intensity_row, per_light_diffuse_row])
+    per_light_controls = stack_rows(per_light_rows)
     global_controls.save(out_dir / "global_controls_sequence.png")
     per_light_controls.save(out_dir / "per_light_controls_sequence.png")
 
@@ -371,13 +400,15 @@ def main() -> int:
         global_diffuse_row.save(out_dir / "global_diffuse_sequence.png")
         color_row.save(out_dir / "color_sequence.png")
         intensity_row.save(out_dir / "intensity_sequence.png")
-        per_light_diffuse_row.save(out_dir / "per_light_diffuse_sequence.png")
+        if per_light_diffuse_row is not None:
+            per_light_diffuse_row.save(out_dir / "per_light_diffuse_sequence.png")
     if args.write_panels:
         save_individual_panels(out_dir, "ambient", ambient_images, ambient_labels)
         save_individual_panels(out_dir, "global_diffuse", global_diffuse_images, global_diffuse_labels)
         save_individual_panels(out_dir, "color", color_images, color_labels)
         save_individual_panels(out_dir, "intensity", intensity_images, intensity_labels)
-        save_individual_panels(out_dir, "per_light_diffuse", per_light_diffuse_images, per_light_diffuse_labels)
+        if per_light_diffuse_images:
+            save_individual_panels(out_dir, "per_light_diffuse", per_light_diffuse_images, per_light_diffuse_labels)
 
     print(f"Wrote {out_dir / 'global_controls_sequence.png'}")
     print(f"Wrote {out_dir / 'per_light_controls_sequence.png'}")
