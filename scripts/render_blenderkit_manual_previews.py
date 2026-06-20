@@ -383,6 +383,75 @@ def translate_subject_to_placement(subject_objects: list, placement_world: list[
     relight.apply_world_transform(subject_objects, Matrix.Translation(shift))
 
 
+def camera_angle(camera) -> float:
+    data = camera.data
+    return float(getattr(data, "angle", 0.0) or getattr(data, "angle_x", 0.0) or 0.0)
+
+
+def clone_source_camera_fov_preserving_framing(source_camera, center, fov_degrees: float):
+    import bpy
+    from mathutils import Vector
+    import render_object_relighting as relight
+
+    old_fov = camera_angle(source_camera)
+    new_fov = max(float(fov_degrees), 1e-6) * 3.141592653589793 / 180.0
+    camera_data = source_camera.data.copy()
+    camera_data.name = f"{source_camera.data.name}_TL_fov{fov_degrees:g}"
+    camera_data.type = "PERSP"
+    camera_data.angle = new_fov
+    camera = source_camera.copy()
+    camera.data = camera_data
+    camera.name = f"{source_camera.name}_TL_fov{fov_degrees:g}"
+    bpy.context.collection.objects.link(camera)
+
+    _right, _up, forward = relight.camera_basis(source_camera)
+    source_location = Vector(source_camera.location)
+    old_depth = float((center - source_location).dot(forward))
+    if old_depth > 1e-6 and old_fov > 1e-6:
+        import math
+
+        new_depth = old_depth * math.tan(old_fov * 0.5) / max(math.tan(new_fov * 0.5), 1e-6)
+        camera.location = source_location + forward * (old_depth - new_depth)
+        adjustment = {
+            "mode": "preserve_source_rotation_match_object_apparent_size",
+            "source_fov_degrees": math.degrees(old_fov),
+            "target_fov_degrees": float(fov_degrees),
+            "source_object_center_depth": old_depth,
+            "target_object_center_depth": new_depth,
+            "translation_along_source_forward": old_depth - new_depth,
+        }
+    else:
+        adjustment = {
+            "mode": "copy_source_camera_no_depth_adjustment",
+            "source_fov_degrees": None,
+            "target_fov_degrees": float(fov_degrees),
+            "source_object_center_depth": old_depth,
+            "target_object_center_depth": old_depth,
+            "translation_along_source_forward": 0.0,
+        }
+    bpy.context.view_layer.update()
+    return camera, adjustment
+
+
+def source_camera_meta(camera, adjusted_camera, center, adjustment: dict, config: dict, relight) -> dict:
+    from mathutils import Vector
+
+    return {
+        "name": camera.name if camera else None,
+        "location": relight.vec_to_list(Vector(camera.location)) if camera else None,
+        "rotation_euler": [float(v) for v in camera.rotation_euler] if camera else None,
+        "fov_degrees": adjustment.get("source_fov_degrees"),
+        "fov39p6_camera": {
+            "name": adjusted_camera.name,
+            "location": relight.vec_to_list(Vector(adjusted_camera.location)),
+            "rotation_euler": [float(v) for v in adjusted_camera.rotation_euler],
+            "fov_degrees": float(config["camera"].get("fov_degrees", 39.6)),
+            "adjustment": adjustment,
+            "center": relight.vec_to_list(center),
+        },
+    }
+
+
 def render_manual_worker(args: argparse.Namespace) -> int:
     script_dir = ROOT / "scripts"
     if str(script_dir) not in sys.path:
@@ -440,24 +509,40 @@ def render_manual_worker(args: argparse.Namespace) -> int:
         relight.set_canonical_runtime_transform(config, bbox_min, bbox_max)
         relight.create_camera(config, rng, center)
 
-    source_camera_name = bpy.context.scene.camera.name if bpy.context.scene.camera else None
+    source_camera = bpy.context.scene.camera
+    source_camera_name = source_camera.name if source_camera else None
     colored_path = scene_dir / "preview_000_source_camera_colored_object.png"
     colorized_render(colored_path, subject_objects)
 
     bbox_min, bbox_max = relight.mesh_bbox(subject_objects)
     relight.set_canonical_runtime_transform(config, bbox_min, bbox_max)
     center = (bbox_min + bbox_max) * 0.5
-    canonical_camera, camera_meta = relight.create_camera(config, rng, center)
-    bpy.context.scene.camera = canonical_camera
+    if kind == "object":
+        render_camera, camera_adjustment = clone_source_camera_fov_preserving_framing(
+            source_camera,
+            center,
+            float(config["camera"].get("fov_degrees", 39.6)),
+        )
+        camera_meta = source_camera_meta(source_camera, render_camera, center, camera_adjustment, config, relight)
+    else:
+        render_camera, camera_meta = relight.create_camera(config, rng, center)
+        camera_adjustment = {"mode": "objaverse_canonical_camera"}
+    bpy.context.scene.camera = render_camera
     bpy.context.view_layer.update()
 
-    canonical_path = scene_dir / "preview_001_objaverse_canonical.png"
+    normal_name = "preview_001_source_camera_fov39p6.png" if kind == "object" else "preview_001_objaverse_canonical.png"
+    canonical_path = scene_dir / normal_name
     relight.render_png(canonical_path)
 
     positions = relight.sample_spatial_positions(config, rng)
-    light_rel = relight.render_light_position_preview(scene_dir, positions, config, canonical_camera, center)
+    light_rel = relight.render_light_position_preview(scene_dir, positions, config, render_camera, center)
     light_src = (scene_dir / light_rel).resolve()
-    light_dst = scene_dir / "preview_002_objaverse_canonical_light_preview.png"
+    light_name = (
+        "preview_002_source_camera_fov39p6_light_preview.png"
+        if kind == "object"
+        else "preview_002_objaverse_canonical_light_preview.png"
+    )
+    light_dst = scene_dir / light_name
     if light_src.exists():
         shutil.copyfile(light_src, light_dst)
 
@@ -486,18 +571,19 @@ def render_manual_worker(args: argparse.Namespace) -> int:
             "max": relight.vec_to_list(full_bbox_max),
         },
         "source_camera": {"name": source_camera_name},
-        "canonical_camera": camera_meta,
+        "render_camera": camera_meta,
+        "camera_adjustment": camera_adjustment,
         "canonical": config["canonical"],
         "spatial_preview": {
             "positions_per_scene": len(positions),
             "light_position_preview": repo_relative(light_dst),
             "light_volume_center": relight.vec_to_list(center),
-            "canonical_transform": relight.canonical_transform_meta(config, canonical_camera, center),
+            "canonical_transform": relight.canonical_transform_meta(config, render_camera, center),
         },
         "renders": {
             "source_camera_colored_object": repo_relative(colored_path),
-            "objaverse_canonical": repo_relative(canonical_path),
-            "objaverse_canonical_light_preview": repo_relative(light_dst),
+            "normal": repo_relative(canonical_path),
+            "light_preview": repo_relative(light_dst),
         },
         "render": {
             "resolution": [bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y],
