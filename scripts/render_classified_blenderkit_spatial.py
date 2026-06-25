@@ -54,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--api-key", default=os.environ.get("BLENDERKIT_API_KEY", ""))
     parser.add_argument("--api-key-file", default=None)
     parser.add_argument("--blender-cmd", default=os.environ.get("BLENDER_CMD", "blender"))
-    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--limit", "--max-scenes", dest="limit", type=int, default=None)
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--width", type=int, default=960)
     parser.add_argument("--height", type=int, default=540)
@@ -80,7 +80,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--debug", action="store_true", help="Render preview outputs only and skip point-light components.")
     parser.add_argument("--light-preview", action="store_true", default=True)
     parser.add_argument("--no-light-preview", action="store_false", dest="light_preview")
+    parser.add_argument(
+        "--light-preview-only",
+        action="store_true",
+        default=False,
+        help="Hide the source scene while rendering the light-position preview.",
+    )
+    parser.add_argument("--no-light-preview-only", action="store_false", dest="light_preview_only")
     parser.add_argument("--positions-per-scene", type=int, default=None)
+    parser.add_argument(
+        "--fixed-light-grid",
+        action="store_true",
+        default=True,
+        help="Use deterministic 4x4x4 light positions ordered as x outer, y middle, z inner.",
+    )
+    parser.add_argument("--random-light-grid", action="store_false", dest="fixed_light_grid")
     parser.add_argument(
         "--light-volume-placement",
         choices=["bbox-center", "camera-framed"],
@@ -92,6 +106,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=None,
         help="Target camera depth / cube scale for camera-framed placement. Defaults to the canonical rig camera distance.",
+    )
+    parser.add_argument(
+        "--camera-rig-mode",
+        choices=["fixed-camera", "similarity"],
+        default="fixed-camera",
+        help="fixed-camera keeps the source camera and resizes the light cube; similarity moves the camera with the cube.",
     )
     parser.add_argument(
         "--spatial-bbox-mode",
@@ -259,6 +279,7 @@ def worker_command(args: argparse.Namespace, blend_path: Path, item_path: Path) 
     cmd.extend(["--light-volume-placement", args.light_volume_placement])
     if args.light_volume_depth_over_scale is not None:
         cmd.extend(["--light-volume-depth-over-scale", str(args.light_volume_depth_over_scale)])
+    cmd.extend(["--camera-rig-mode", args.camera_rig_mode])
     cmd.extend(["--spatial-bbox-mode", args.spatial_bbox_mode])
     cmd.extend(["--subject-candidate-count", str(args.subject_candidate_count)])
     cmd.extend(["--candidate-padding", str(args.candidate_padding)])
@@ -269,6 +290,12 @@ def worker_command(args: argparse.Namespace, blend_path: Path, item_path: Path) 
         cmd.append("--light-preview")
     else:
         cmd.append("--no-light-preview")
+    if args.light_preview_only:
+        cmd.append("--light-preview-only")
+    if args.fixed_light_grid:
+        cmd.append("--fixed-light-grid")
+    else:
+        cmd.append("--random-light-grid")
     return cmd
 
 
@@ -345,6 +372,11 @@ def load_runtime_config(config_path: Path, args: argparse.Namespace) -> dict:
     config["_point_light_mode"] = args.point_light_mode
     config["_hdri_mode"] = args.hdri_mode
     config["_light_preview"] = bool(args.light_preview)
+    config["_light_preview_only"] = bool(args.light_preview_only)
+    config["_fixed_light_grid"] = bool(args.fixed_light_grid)
+    if args.fixed_light_grid:
+        config.setdefault("spatial", {})["positions_per_scene"] = 64
+        config["spatial"]["sampling"] = "fixed_grid_4x4x4"
     config["_render_pbr"] = False
     hdri_manifest_value = config.get("hdri_manifest")
     hdri_manifest = resolve_repo_path(hdri_manifest_value) if hdri_manifest_value else None
@@ -550,11 +582,11 @@ def camera_framed_light_volume(
     Vector,
     target_depth_over_scale: float | None,
     scene=None,
+    camera_rig_mode: str = "fixed-camera",
 ):
-    _right, _up, forward = relight.camera_basis(camera)
+    right, up, forward = relight.camera_basis(camera)
     camera_location = Vector(camera.location)
     bbox_depth = float((bbox_center - camera_location).dot(forward))
-    depth = max(bbox_depth, 0.1)
     target_ratio = float(target_depth_over_scale) if target_depth_over_scale is not None else canonical_depth_over_scale(config)
     target_ratio = max(target_ratio, 1e-6)
     canonical_fov = math.radians(float(config.get("camera", {}).get("fov_degrees", 39.6)))
@@ -564,12 +596,50 @@ def camera_framed_light_volume(
     fov_scale_y = math.tan(current_fov_y * 0.5) / max(math.tan(canonical_fov * 0.5), 1e-6)
     fov_scale = fov_scale_x
     front_extent = canonical_forward_front_extent(config)
+
+    if camera_rig_mode == "similarity":
+        scale = relight.canonical_world_scale(config)
+        depth = max(target_ratio * scale, 1e-6)
+        light_center = bbox_center
+        new_camera_location = light_center - forward * depth
+        camera.location = new_camera_location
+        relight.bpy.context.view_layer.update()
+        camera_delta = Vector(camera.location) - camera_location
+        adjustment = {
+            "mode": "camera-framed-similarity",
+            "camera_rig_mode": "similarity",
+            "bbox_center": relight.vec_to_list(bbox_center),
+            "adjusted_center": relight.vec_to_list(light_center),
+            "center_shift": [0.0, 0.0, 0.0],
+            "original_camera_location": relight.vec_to_list(camera_location),
+            "camera_location": relight.vec_to_list(Vector(camera.location)),
+            "camera_delta": relight.vec_to_list(camera_delta),
+            "camera_depth": depth,
+            "original_bbox_camera_depth": bbox_depth,
+            "bbox_camera_depth": float((bbox_center - Vector(camera.location)).dot(forward)),
+            "target_depth_over_scale": target_ratio,
+            "canonical_fov_degrees": math.degrees(canonical_fov),
+            "current_fov_degrees": math.degrees(current_fov),
+            "current_fov_y_degrees": math.degrees(current_fov_y),
+            "fov_scale_x": fov_scale_x,
+            "fov_scale_y": fov_scale_y,
+            "fov_scale_axis": "x",
+            "fov_scale": fov_scale,
+            "scale_match": "canonical_bbox_scale_with_moved_camera",
+            "canonical_front_extent": front_extent,
+            "scale": scale,
+        }
+        config.setdefault("_runtime", {})["canonical_scale"] = scale
+        config["_runtime"]["light_volume_center_source"] = "bbox_center_similarity_camera_rig"
+        config["_runtime"]["light_volume_adjustment"] = adjustment
+        return light_center, adjustment
+
+    depth = max(bbox_depth, 0.1)
     center_plane_scale = max((depth / target_ratio) * fov_scale, 1e-6)
     projected_bbox_denominator = max(target_ratio - front_extent + fov_scale * front_extent, 1e-6)
     scale = max((depth * fov_scale) / projected_bbox_denominator, 1e-6)
     light_center = camera_location + forward * depth
     if scene is not None:
-        right, up, _forward = relight.camera_basis(camera)
         for _ in range(3):
             co = relight.world_to_camera_view(scene, camera, light_center)
             dx = 0.5 - float(co.x)
@@ -584,6 +654,7 @@ def camera_framed_light_volume(
     config.setdefault("_runtime", {})["canonical_scale"] = scale
     adjustment = {
         "mode": "camera-framed",
+        "camera_rig_mode": "fixed-camera",
         "bbox_center": relight.vec_to_list(bbox_center),
         "adjusted_center": relight.vec_to_list(light_center),
         "center_shift": relight.vec_to_list(shift),
@@ -606,6 +677,34 @@ def camera_framed_light_volume(
     config["_runtime"]["light_volume_center_source"] = "camera_axis_at_bbox_depth"
     config["_runtime"]["light_volume_adjustment"] = adjustment
     return light_center, adjustment
+
+
+def fixed_light_grid_positions(_config: dict, _rng: random.Random) -> list[list[float]]:
+    values = [-0.75, -0.25, 0.25, 0.75]
+    return [[x, y, z] for x in values for y in values for z in values]
+
+
+def install_fixed_light_grid_sampler(config: dict, relight) -> None:
+    if not config.get("_fixed_light_grid", False):
+        return
+    relight.sample_spatial_positions = fixed_light_grid_positions
+
+
+def hide_scene_for_light_preview(bpy_module) -> dict:
+    states = {}
+    for obj in bpy_module.context.scene.objects:
+        if obj.type == "CAMERA":
+            continue
+        states[obj.name] = bool(obj.hide_render)
+        obj.hide_render = True
+    return states
+
+
+def restore_light_preview_visibility(bpy_module, states: dict) -> None:
+    for name, hide_render in states.items():
+        obj = bpy_module.data.objects.get(name)
+        if obj is not None:
+            obj.hide_render = hide_render
 
 
 def render_debug_preview(
@@ -633,7 +732,13 @@ def render_debug_preview(
     positions = relight.sample_spatial_positions(config, rng)
     light_position_preview = None
     if config.get("_light_preview", False):
-        light_position_preview = relight.render_light_position_preview(scene_dir, positions, config, camera, light_center)
+        hidden_states = {}
+        try:
+            if config.get("_light_preview_only", False):
+                hidden_states = hide_scene_for_light_preview(relight.bpy)
+            light_position_preview = relight.render_light_position_preview(scene_dir, positions, config, camera, light_center)
+        finally:
+            restore_light_preview_visibility(relight.bpy, hidden_states)
 
     spatial = config["spatial"]
     return {
@@ -673,6 +778,7 @@ def worker(args: argparse.Namespace) -> int:
     item_id = str(item.get("id")).zfill(5)
     scene_id = f"blenderkit_{item_id}"
     config = load_runtime_config(resolve_repo_path(args.config), args)
+    install_fixed_light_grid_sampler(config, relight)
 
     bpy.ops.wm.open_mainfile(filepath=str(resolve_repo_path(args.blend)))
     relight.setup_render_settings(config)
@@ -706,6 +812,7 @@ def worker(args: argparse.Namespace) -> int:
             Vector,
             args.light_volume_depth_over_scale,
             bpy.context.scene,
+            args.camera_rig_mode,
         )
     else:
         config.setdefault("_runtime", {})["light_volume_center_source"] = "bbox_center"

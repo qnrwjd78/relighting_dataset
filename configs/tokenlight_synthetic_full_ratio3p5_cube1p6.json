@@ -15,9 +15,6 @@
         "exr_color_depth": "16",
         "component_format": "exr",
         "component_png_gamma": 2.2,
-        "pbr_white_shading": {
-            "enabled": false
-        },
         "view_transform": "Standard",
         "look": "None",
         "exposure": 0.0,
@@ -33,12 +30,12 @@
         ],
         "canonical_position": [
             0.0,
-            -4.5,
+            -3.5,
             0.0
         ],
         "canonical_distance_range": [
-            4.5,
-            4.5
+            3.5,
+            3.5
         ],
         "azimuth_degrees_range": [
             -35.0,
@@ -208,7 +205,14 @@
                 -1.0,
                 1.0
             ]
-        }
+        },
+        "axis_scale": [
+            1.2444444444444445,
+            1.2444444444444445,
+            1.2444444444444445
+        ],
+        "projection_reference_ratio": 4.5,
+        "projection_cube_multiplier": 1.6
     },
     "spatial": {
         "enabled": true,
@@ -255,16 +259,6 @@
             1.0,
             1.0
         ],
-        "valid_filter": {
-            "enabled": true,
-            "grid_resolution": 4,
-            "p99_luminance_threshold": 0.01,
-            "nonzero_pixel_ratio_threshold": 0.001,
-            "nonzero_luminance_threshold": 0.0001,
-            "max_refill_attempts": 256,
-            "keep_attempt_renders": false,
-            "require_target_count": true
-        },
         "include_hdri_in_point_lights": false,
         "per_light_diffuse": {
             "enabled": false,
@@ -281,6 +275,16 @@
                 0.4
             ],
             "radius_mapping": "linear"
+        },
+        "valid_filter": {
+            "enabled": true,
+            "grid_resolution": 4,
+            "p99_luminance_threshold": 0.01,
+            "nonzero_pixel_ratio_threshold": 0.001,
+            "nonzero_luminance_threshold": 0.0001,
+            "max_refill_attempts": 256,
+            "keep_attempt_renders": false,
+            "require_target_count": true
         }
     },
     "global_diffuse": {

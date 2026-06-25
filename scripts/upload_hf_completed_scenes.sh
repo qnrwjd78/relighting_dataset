@@ -8,6 +8,7 @@ REMOTE_DIR="${REMOTE_DIR:-completed_archives}"
 STAGING_PARENT="${STAGING_PARENT:-outputs/hf_completed_upload_stage}"
 ARCHIVE_DIR="${ARCHIVE_DIR:-outputs/hf_upload_archives}"
 COMPRESSION="${COMPRESSION:-auto}"
+ZSTD_LEVEL="${ZSTD_LEVEL:-19}"
 SPLIT_SIZE="${SPLIT_SIZE:-}"
 PYTHON_CMD="${PYTHON_CMD:-python3}"
 KEEP_ARCHIVE="${KEEP_ARCHIVE:-0}"
@@ -232,6 +233,9 @@ fi
 
 echo "[INFO] repo=${REPO_ID} repo_type=${REPO_TYPE}"
 echo "[INFO] compression=${COMPRESSION}"
+if [[ "$COMPRESSION" == "zst" ]]; then
+  echo "[INFO] zstd_level=${ZSTD_LEVEL}"
+fi
 
 if [[ -n "$SPLIT_SIZE" ]]; then
   require_cmd split
@@ -244,7 +248,7 @@ if [[ -n "$SPLIT_SIZE" ]]; then
   echo "[COMPRESS] creating split archive parts from completed-scene stage..."
   if [[ "$COMPRESSION" == "zst" ]]; then
     tar -cf - -C "$STAGING_PARENT" "$DATASET_NAME" \
-      | zstd -T0 -19 -c \
+      | zstd -T0 "-${ZSTD_LEVEL}" -c \
       | split -b "$SPLIT_SIZE" -d -a 4 - "$PART_PREFIX"
   else
     tar -czf - -C "$STAGING_PARENT" "$DATASET_NAME" \
@@ -293,7 +297,7 @@ else
   echo "[INFO] remote_path=${REMOTE_PATH}"
   echo "[COMPRESS] creating archive from completed-scene stage..."
   if [[ "$COMPRESSION" == "zst" ]]; then
-    tar -cf "$ARCHIVE_PATH" --use-compress-program "zstd -T0 -19" -C "$STAGING_PARENT" "$DATASET_NAME"
+    tar -cf "$ARCHIVE_PATH" --use-compress-program "zstd -T0 -${ZSTD_LEVEL}" -C "$STAGING_PARENT" "$DATASET_NAME"
   else
     tar -czf "$ARCHIVE_PATH" -C "$STAGING_PARENT" "$DATASET_NAME"
   fi

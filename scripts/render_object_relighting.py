@@ -8,7 +8,9 @@ import os
 import random
 import shutil
 import sys
+import time
 from array import array
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterable
 
@@ -44,6 +46,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--light-preview", action="store_true", help="Render a PNG showing the sampled spatial light positions.")
     parser.add_argument("--debug-light-preview", action="store_true", help="Deprecated alias for --light-preview.")
     parser.add_argument("--pbr", action="store_true", help="Render extra PBR maps: depth, normal, albedo, roughness.")
+    parser.add_argument(
+        "--pbr-white-shading-only",
+        action="store_true",
+        help="Legacy diagnostic: render only white diffuse point-light shading maps and skip RGB/PBR component maps.",
+    )
+    parser.add_argument(
+        "--pbr-white-shading",
+        dest="pbr_white_shading",
+        action="store_true",
+        default=None,
+        help="Legacy diagnostic: with --pbr, render white diffuse shading maps for each spatial point light.",
+    )
+    parser.add_argument(
+        "--no-pbr-white-shading",
+        dest="pbr_white_shading",
+        action="store_false",
+        help="Disable white diffuse point-light shading maps even if enabled in config.",
+    )
     parser.add_argument("--component-format", choices=["exr", "png", "both"], default=None)
     parser.add_argument("--output-format", choices=["exr", "png", "both"], dest="component_format")
     parser.add_argument("--ambient-source", choices=["hdri", "scene"], default=None)
@@ -54,6 +74,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-global-diffuse", dest="global_diffuse", action="store_false")
     parser.add_argument("--per-light-diffuse", dest="per_light_diffuse", action="store_true", default=None)
     parser.add_argument("--no-per-light-diffuse", dest="per_light_diffuse", action="store_false")
+    parser.add_argument(
+        "--soft-light-transport",
+        action="store_true",
+        help="Use the previous Cycles light transport settings instead of the default direct-limited transport.",
+    )
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
 
@@ -208,6 +233,55 @@ def setup_render_settings(config: dict) -> None:
     scene.render.image_settings.color_mode = "RGB"
     scene.render.image_settings.color_depth = str(render_cfg.get("exr_color_depth", "16"))
     scene["tl_exr_color_depth"] = str(render_cfg.get("exr_color_depth", "16"))
+    apply_light_transport_settings(config)
+
+
+def direct_light_transport_settings(config: dict) -> dict:
+    render_cfg = config.get("render", {})
+    raw = render_cfg.get("direct_light_transport", {})
+    if not isinstance(raw, dict):
+        raw = {}
+    defaults = {
+        "max_bounces": 4,
+        "diffuse_bounces": 0,
+        "glossy_bounces": 1,
+        "transmission_bounces": 4,
+        "transparent_max_bounces": 4,
+        "volume_bounces": 0,
+        "caustics": True,
+    }
+    result = dict(defaults)
+    result.update({key: raw[key] for key in defaults if key in raw})
+    return result
+
+
+def apply_light_transport_settings(config: dict) -> None:
+    scene = bpy.context.scene
+    if scene.render.engine != "CYCLES" or bool(config.get("_soft_light_transport", False)):
+        return
+    settings = direct_light_transport_settings(config)
+    cycles = scene.cycles
+    for name in (
+        "max_bounces",
+        "diffuse_bounces",
+        "glossy_bounces",
+        "transmission_bounces",
+        "transparent_max_bounces",
+        "volume_bounces",
+    ):
+        if hasattr(cycles, name):
+            setattr(cycles, name, int(settings[name]))
+    if bool(settings.get("caustics", True)):
+        for name in ("caustics_reflective", "caustics_refractive"):
+            if hasattr(cycles, name):
+                setattr(cycles, name, True)
+
+
+def light_transport_meta(config: dict) -> dict:
+    if bool(config.get("_soft_light_transport", False)):
+        return {"mode": "soft", "preset": "cycles_config_default"}
+    settings = direct_light_transport_settings(config)
+    return {"mode": "direct_limited", **settings}
 
 
 def make_principled_mat(
@@ -1360,7 +1434,32 @@ def similarity_axes_from_meta(meta: dict) -> tuple[Vector, Vector, Vector]:
     return right.normalized(), forward.normalized(), up.normalized()
 
 
-def transformed_canonical_point(config: dict, p: Vector | list[float], target_center: Vector | None = None) -> Vector:
+def canonical_axis_scale(config: dict) -> Vector:
+    value = config.get("canonical", {}).get("axis_scale", [1.0, 1.0, 1.0])
+    if isinstance(value, dict):
+        return Vector((float(value.get("x", 1.0)), float(value.get("y", 1.0)), float(value.get("z", 1.0))))
+    if isinstance(value, (int, float)):
+        scale = float(value)
+        return Vector((scale, scale, scale))
+    return Vector((
+        float(value[0]) if len(value) > 0 else 1.0,
+        float(value[1]) if len(value) > 1 else 1.0,
+        float(value[2]) if len(value) > 2 else 1.0,
+    ))
+
+
+def canonical_axis_scaled_world_scale(config: dict) -> float:
+    axis_scale = canonical_axis_scale(config)
+    volume_scale = abs(float(axis_scale.x * axis_scale.y * axis_scale.z)) ** (1.0 / 3.0)
+    return canonical_world_scale(config) * max(volume_scale, 1e-6)
+
+
+def transformed_canonical_point(
+    config: dict,
+    p: Vector | list[float],
+    target_center: Vector | None = None,
+    apply_axis_scale: bool = True,
+) -> Vector:
     runtime = config.get("_runtime", {})
     transform = runtime.get("similarity_transform")
     if not transform:
@@ -1370,6 +1469,9 @@ def transformed_canonical_point(config: dict, p: Vector | list[float], target_ce
     scale = float(transform["scale"])
     canonical = Vector((float(p[0]), float(p[1]), float(p[2]))) if not isinstance(p, Vector) else p
     offset = canonical - Vector(transform["canonical_center"])
+    if apply_axis_scale:
+        axis_scale = canonical_axis_scale(config)
+        offset = Vector((offset.x * axis_scale.x, offset.y * axis_scale.y, offset.z * axis_scale.z))
     return center + right * (offset.x * scale) + forward * (offset.y * scale) + up * (offset.z * scale)
 
 
@@ -1459,7 +1561,7 @@ def create_camera(config: dict, rng: random.Random, center: Vector) -> tuple[bpy
         camera_position_can = canonical_camera_position(config, rng)
         transform = initialize_similarity_transform(config, rng, center, az, el, roll)
         rig_scale = float(transform["scale"])
-        location = transformed_canonical_point(config, camera_position_can)
+        location = transformed_canonical_point(config, camera_position_can, apply_axis_scale=False)
         look_target = Vector(transform["target_center"])
         canonical_distance = float((camera_position_can - canonical_center(config)).length)
         distance = float((location - look_target).length)
@@ -1641,7 +1743,7 @@ def canonical_world_scale(config: dict) -> float:
 
 def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, center: Vector) -> Vector:
     if config.get("_runtime", {}).get("similarity_transform") and canonical_mapping(config) != "camera_frustum":
-        return transformed_canonical_point(config, p)
+        return transformed_canonical_point(config, p, apply_axis_scale=True)
 
     right, up, forward = camera_basis(camera)
     offset = Vector((float(p[0]), float(p[1]), float(p[2]))) - canonical_center(config)
@@ -1661,7 +1763,13 @@ def canonical_to_world(p: list[float], camera: bpy.types.Object, config: dict, c
         return camera_location + forward * depth + right * (x_norm * half_width) + up * (z_norm * half_height)
 
     scale = canonical_world_scale(config)
-    return center + right * (offset.x * scale) + forward * (offset.y * scale) + up * (offset.z * scale)
+    axis_scale = canonical_axis_scale(config)
+    return (
+        center
+        + right * (offset.x * scale * axis_scale.x)
+        + forward * (offset.y * scale * axis_scale.y)
+        + up * (offset.z * scale * axis_scale.z)
+    )
 
 
 def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vector) -> dict:
@@ -1673,10 +1781,15 @@ def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vec
     scale = float(canonical_world_scale(config))
     depth_center = Vector(similarity["target_center"]) if similarity else Vector(center)
     camera_depth = max((depth_center - Vector(camera.location)).dot(forward), 0.0)
+    axis_scale = canonical_axis_scale(config)
+    axis_world_scale = Vector((scale * axis_scale.x, scale * axis_scale.y, scale * axis_scale.z))
     meta = {
         "target_center": vec_to_list(center),
         "canonical_center": vec_to_list(canonical_center(config)),
         "scale": scale,
+        "axis_scale": vec_to_list(axis_scale),
+        "axis_world_scale": vec_to_list(axis_world_scale),
+        "light_world_scale": canonical_axis_scaled_world_scale(config),
         "scale_base": config.get("_runtime", {}).get("canonical_scale_base"),
         "scale_multiplier": config.get("_runtime", {}).get("canonical_scale_multiplier"),
         "scale_rule": config["canonical"].get("scale_rule", "bbox_max_extent"),
@@ -1685,6 +1798,7 @@ def canonical_transform_meta(config: dict, camera: bpy.types.Object, center: Vec
         "depth_fraction": config["canonical"].get("depth_fraction"),
         "camera_distance": camera_depth,
         "camera_distance_over_scale": float(camera_depth / max(scale, 1e-6)),
+        "camera_distance_over_light_scale": float(camera_depth / max(canonical_axis_scaled_world_scale(config), 1e-6)),
         "axis_order": "x=camera_right,y=camera_forward_depth,z=camera_up",
         "x_axis_world": vec_to_list(right),
         "y_axis_world": vec_to_list(forward),
@@ -2024,7 +2138,7 @@ def render_exr(path: Path) -> None:
     scene.render.image_settings.file_format = "OPEN_EXR"
     scene.render.image_settings.color_mode = "RGB"
     scene.render.image_settings.color_depth = str(scene.get("tl_exr_color_depth", "16"))
-    bpy.ops.render.render(write_still=True)
+    run_blender_render(path, write_still=True)
 
 
 def render_png(path: Path) -> None:
@@ -2034,9 +2148,50 @@ def render_png(path: Path) -> None:
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGB"
     scene.render.image_settings.color_depth = "8"
-    bpy.ops.render.render(write_still=True)
+    run_blender_render(path, write_still=True)
     scene.render.image_settings.file_format = "OPEN_EXR"
     scene.render.image_settings.color_mode = "RGB"
+
+
+def scene_render_log_path(output_path: Path) -> Path:
+    output_path = output_path.resolve()
+    for parent in [output_path.parent, *output_path.parents]:
+        if parent.parent.name == "scenes":
+            return parent / "_blender_render.log"
+    return output_path.parent / "_blender_render.log"
+
+
+@contextmanager
+def redirect_render_output(log_path: Path):
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    saved_stdout = os.dup(1)
+    saved_stderr = os.dup(2)
+    with log_path.open("ab", buffering=0) as log:
+        header = f"\n--- Blender render {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n"
+        os.write(log.fileno(), header.encode("utf-8", errors="replace"))
+        try:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os.dup2(log.fileno(), 1)
+            os.dup2(log.fileno(), 2)
+            yield
+        finally:
+            sys.stdout.flush()
+            sys.stderr.flush()
+            os.dup2(saved_stdout, 1)
+            os.dup2(saved_stderr, 2)
+            os.close(saved_stdout)
+            os.close(saved_stderr)
+
+
+def run_blender_render(output_path: Path, write_still: bool) -> None:
+    log_path = scene_render_log_path(output_path)
+    try:
+        with redirect_render_output(log_path):
+            bpy.ops.render.render(write_still=write_still)
+    except Exception:
+        progress_write(f"[Relighting] Blender render failed; internal log: {log_path}")
+        raise
 
 
 def component_formats(config: dict) -> set[str]:
@@ -2123,6 +2278,119 @@ def copy_component(scene_dir: Path, src_base: str, dst_base: str, config: dict) 
         shutil.copyfile(src, dst)
         result[fmt] = f"{dst_base}.{fmt}"
     return result
+
+
+def remove_component_files(scene_dir: Path, rel_base: str, config: dict) -> None:
+    for fmt in component_formats(config):
+        (scene_dir / f"{rel_base}.{fmt}").unlink(missing_ok=True)
+
+
+def component_output_exr_path(scene_dir: Path, output: dict | None) -> Path | None:
+    if not output:
+        return None
+    rel = output.get("exr") or output.get("render_exr")
+    if rel is None:
+        primary = output.get("primary") or output.get("render")
+        if primary and str(primary).lower().endswith(".exr"):
+            rel = primary
+    return scene_dir / str(rel) if rel else None
+
+
+def exr_luminance_stats(exr_path: Path, nonzero_threshold: float) -> dict:
+    if not exr_path.exists():
+        return {"error": f"missing_exr:{exr_path}", "valid_stats": False}
+    image = bpy.data.images.load(str(exr_path), check_existing=False)
+    try:
+        width, height = int(image.size[0]), int(image.size[1])
+        channels = max(int(image.channels), 1)
+        pixels = array("f", [0.0]) * (width * height * channels)
+        image.pixels.foreach_get(pixels)
+        values: list[float] = []
+        nonzero = 0
+        for pixel_index in range(width * height):
+            offset = pixel_index * channels
+            r = float(pixels[offset])
+            g = float(pixels[offset + min(1, channels - 1)])
+            b = float(pixels[offset + min(2, channels - 1)])
+            lum = max((r + g + b) / 3.0, 0.0)
+            if math.isfinite(lum):
+                values.append(lum)
+                if lum > nonzero_threshold:
+                    nonzero += 1
+        if not values:
+            return {
+                "width": width,
+                "height": height,
+                "valid_stats": False,
+                "p99_lum": 0.0,
+                "mean_lum": 0.0,
+                "max_lum": 0.0,
+                "nonzero_pixel_ratio": 0.0,
+            }
+        values.sort()
+        p99_index = min(max(int((len(values) - 1) * 0.99), 0), len(values) - 1)
+        mean_lum = sum(values) / float(len(values))
+        return {
+            "width": width,
+            "height": height,
+            "valid_stats": True,
+            "p99_lum": float(values[p99_index]),
+            "mean_lum": float(mean_lum),
+            "max_lum": float(values[-1]),
+            "nonzero_pixel_ratio": float(nonzero) / float(max(len(values), 1)),
+            "nonzero_luminance_threshold": float(nonzero_threshold),
+        }
+    finally:
+        bpy.data.images.remove(image)
+
+
+def point_light_valid_filter_config(spatial: dict) -> dict:
+    raw = spatial.get("valid_filter", {})
+    if isinstance(raw, bool):
+        raw = {"enabled": raw}
+    raw = dict(raw) if isinstance(raw, dict) else {}
+    return {
+        "enabled": bool(raw.get("enabled", False)),
+        "grid_resolution": int(raw.get("grid_resolution", spatial.get("grid_resolution", 4))),
+        "p99_luminance_threshold": float(raw.get("p99_luminance_threshold", 0.01)),
+        "nonzero_pixel_ratio_threshold": float(raw.get("nonzero_pixel_ratio_threshold", 0.001)),
+        "nonzero_luminance_threshold": float(raw.get("nonzero_luminance_threshold", 1.0e-4)),
+        "max_refill_attempts": int(raw.get("max_refill_attempts", 256)),
+        "keep_attempt_renders": bool(raw.get("keep_attempt_renders", False)),
+        "require_target_count": bool(raw.get("require_target_count", True)),
+    }
+
+
+def validate_point_light_component(scene_dir: Path, output: dict | None, valid_filter: dict) -> tuple[bool, dict]:
+    exr_path = component_output_exr_path(scene_dir, output)
+    if exr_path is None:
+        stats = {
+            "valid": False,
+            "skip_reason": "missing_exr_for_validation",
+            "thresholds": {
+                "p99_luminance_threshold": float(valid_filter["p99_luminance_threshold"]),
+                "nonzero_pixel_ratio_threshold": float(valid_filter["nonzero_pixel_ratio_threshold"]),
+            },
+        }
+        return False, stats
+    stats = exr_luminance_stats(exr_path, float(valid_filter["nonzero_luminance_threshold"]))
+    p99_ok = float(stats.get("p99_lum", 0.0)) >= float(valid_filter["p99_luminance_threshold"])
+    ratio_ok = float(stats.get("nonzero_pixel_ratio", 0.0)) >= float(valid_filter["nonzero_pixel_ratio_threshold"])
+    valid = bool(stats.get("valid_stats", False)) and p99_ok and ratio_ok
+    stats.update(
+        {
+            "valid": valid,
+            "p99_ok": p99_ok,
+            "nonzero_ratio_ok": ratio_ok,
+            "thresholds": {
+                "p99_luminance_threshold": float(valid_filter["p99_luminance_threshold"]),
+                "nonzero_pixel_ratio_threshold": float(valid_filter["nonzero_pixel_ratio_threshold"]),
+            },
+        }
+    )
+    if not valid:
+        stats["skip_reason"] = "black_or_too_dark_point_light"
+    return valid, stats
 
 
 def write_component_preview_png(scene_dir: Path, output: dict, preview_rel: str, config: dict) -> str:
@@ -2213,8 +2481,340 @@ def restore_object_materials(snapshot: dict[str, list[bpy.types.Material]]) -> N
                 obj.data.materials.append(mat)
 
 
+def scene_world_snapshot():
+    world = bpy.context.scene.world
+    return world.copy() if world is not None else None
+
+
+def restore_scene_world(snapshot) -> None:
+    bpy.context.scene.world = snapshot
+
+
+def cycles_bounce_snapshot() -> dict[str, int] | None:
+    scene = bpy.context.scene
+    if scene.render.engine != "CYCLES":
+        return None
+    names = [
+        "max_bounces",
+        "diffuse_bounces",
+        "glossy_bounces",
+        "transmission_bounces",
+        "transparent_max_bounces",
+        "volume_bounces",
+    ]
+    return {name: int(getattr(scene.cycles, name)) for name in names if hasattr(scene.cycles, name)}
+
+
+def restore_cycles_bounces(snapshot: dict[str, int] | None) -> None:
+    if snapshot is None:
+        return
+    cycles = bpy.context.scene.cycles
+    for name, value in snapshot.items():
+        if hasattr(cycles, name):
+            setattr(cycles, name, value)
+
+
+def set_direct_only_cycles_bounces() -> None:
+    scene = bpy.context.scene
+    if scene.render.engine != "CYCLES":
+        return
+    for name in ("max_bounces", "diffuse_bounces", "glossy_bounces", "transmission_bounces", "volume_bounces"):
+        if hasattr(scene.cycles, name):
+            setattr(scene.cycles, name, 0)
+
+
+def set_optical_cycles_bounces(config: dict) -> None:
+    scene = bpy.context.scene
+    if scene.render.engine != "CYCLES":
+        return
+    bounces = config.get("bounces", {})
+    defaults = {
+        "max_bounces": 8,
+        "diffuse_bounces": 1,
+        "glossy_bounces": 4,
+        "transmission_bounces": 8,
+        "transparent_max_bounces": 8,
+        "volume_bounces": 0,
+    }
+    for name, default in defaults.items():
+        if hasattr(scene.cycles, name):
+            value = int(bounces.get(name, default)) if isinstance(bounces, dict) else default
+            setattr(scene.cycles, name, max(int(getattr(scene.cycles, name)), value))
+    if bool(config.get("caustics", True)):
+        for name in ("caustics_reflective", "caustics_refractive"):
+            if hasattr(scene.cycles, name):
+                setattr(scene.cycles, name, True)
+
+
+def pbr_white_shading_config(config: dict) -> dict:
+    render_cfg = config.get("render", {})
+    raw = render_cfg.get(
+        "pbr_white_shading",
+        render_cfg.get("white_shading_point_lights", config.get("pbr_white_shading", False)),
+    )
+    if isinstance(raw, dict):
+        enabled = bool(raw.get("enabled", False))
+        mode = str(raw.get("mode", "optical")).lower()
+        direct_only = bool(raw.get("direct_only", mode != "optical"))
+        output_root = str(raw.get("output_root", "pbr/white_shading_optical" if mode == "optical" else "pbr/white_shading"))
+        caustics = bool(raw.get("caustics", True))
+        bounces = raw.get("bounces", {})
+        force_white_light = bool(raw.get("force_white_light", True))
+    else:
+        enabled = bool(raw)
+        mode = "optical"
+        direct_only = False
+        output_root = "pbr/white_shading_optical"
+        caustics = True
+        bounces = {}
+        force_white_light = True
+    return {
+        "enabled": enabled,
+        "mode": mode,
+        "direct_only": direct_only,
+        "caustics": caustics,
+        "bounces": bounces if isinstance(bounces, dict) else {},
+        "force_white_light": force_white_light,
+        "material": "white_diffuse_optical" if mode == "optical" else "white_diffuse",
+        "output_root": output_root,
+    }
+
+
+def white_shading_light_base(light_index: int, white_config: dict) -> str:
+    output_root = str(white_config.get("output_root", "pbr/white_shading_optical")).strip("/")
+    return f"{output_root}/point_light_{light_index:03d}"
+
+
+def white_shading_meta_key(white_config: dict) -> str:
+    mode = str(white_config.get("mode", "optical")).lower()
+    return "white_shading_optical" if mode == "optical" else "white_shading"
+
+
+def make_white_diffuse_override_material() -> bpy.types.Material:
+    mat = bpy.data.materials.get("TL_pbr_white_diffuse_override")
+    if mat is None:
+        mat = bpy.data.materials.new("TL_pbr_white_diffuse_override")
+    mat.diffuse_color = (1.0, 1.0, 1.0, 1.0)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+    nodes.clear()
+    diffuse = nodes.new("ShaderNodeBsdfDiffuse")
+    set_input(diffuse, "Color", (1.0, 1.0, 1.0, 1.0))
+    set_input(diffuse, "Roughness", 0.0)
+    output = nodes.new("ShaderNodeOutputMaterial")
+    links.new(diffuse.outputs["BSDF"], output.inputs["Surface"])
+    return mat
+
+
+def socket_float(node, names: list[str], fallback: float) -> float:
+    for name in names:
+        if name in node.inputs:
+            value = node.inputs[name].default_value
+            try:
+                return float(value)
+            except TypeError:
+                return fallback
+    return fallback
+
+
+def material_has_optical_name(mat: bpy.types.Material | None) -> bool:
+    if mat is None:
+        return False
+    name = mat.name.lower()
+    return any(token in name for token in ("glass", "window", "pane", "transparent", "acrylic", "lens", "water", "crystal"))
+
+
+def material_has_alpha_cutout_name(mat: bpy.types.Material | None) -> bool:
+    if mat is None:
+        return False
+    name = mat.name.lower()
+    return any(token in name for token in ("cutout", "alpha_cutout", "decal", "label", "sticker", "leaf", "foliage"))
+
+
+def material_is_optical(mat: bpy.types.Material | None) -> bool:
+    if mat is None:
+        return False
+    if material_has_optical_name(mat):
+        return True
+    diffuse_alpha = float(getattr(mat, "diffuse_color", (1.0, 1.0, 1.0, 1.0))[3])
+    if diffuse_alpha < 0.98:
+        return True
+    if not mat.use_nodes or mat.node_tree is None:
+        return False
+    optical_node_types = {"BSDF_GLASS", "BSDF_TRANSPARENT", "BSDF_TRANSLUCENT", "BSDF_REFRACTION"}
+    for node in mat.node_tree.nodes:
+        if node.type in optical_node_types:
+            return True
+        if node.type == "BSDF_PRINCIPLED":
+            alpha = socket_float(node, ["Alpha"], 1.0)
+            transmission = socket_float(node, ["Transmission Weight", "Transmission"], 0.0)
+            if alpha < 0.98 or transmission > 0.02:
+                return True
+    return False
+
+
+def remove_input_links(tree, socket) -> None:
+    for link in list(socket.links):
+        tree.links.remove(link)
+
+
+def set_color_socket_white(tree, node, names: list[str]) -> None:
+    for name in names:
+        if name not in node.inputs:
+            continue
+        socket = node.inputs[name]
+        remove_input_links(tree, socket)
+        value = socket.default_value
+        if hasattr(value, "__len__"):
+            alpha = float(value[3]) if len(value) > 3 else 1.0
+            socket.default_value = (1.0, 1.0, 1.0, alpha)
+        else:
+            socket.default_value = 1.0
+
+
+def set_color_socket_value(tree, node, names: list[str], color: tuple[float, float, float, float]) -> None:
+    for name in names:
+        if name not in node.inputs:
+            continue
+        socket = node.inputs[name]
+        remove_input_links(tree, socket)
+        value = socket.default_value
+        if hasattr(value, "__len__"):
+            alpha = float(color[3]) if len(value) > 3 else 1.0
+            socket.default_value = (float(color[0]), float(color[1]), float(color[2]), alpha)
+        else:
+            socket.default_value = float(color[0])
+
+
+def set_scalar_socket_value(tree, node, names: list[str], value: float) -> None:
+    for name in names:
+        if name in node.inputs:
+            socket = node.inputs[name]
+            remove_input_links(tree, socket)
+            socket.default_value = float(value)
+
+
+def set_scalar_input(node, names: list[str], value: float) -> None:
+    for name in names:
+        if name in node.inputs:
+            node.inputs[name].default_value = value
+
+
+def neutralize_material_color_channels(mat: bpy.types.Material) -> None:
+    if not mat.use_nodes or mat.node_tree is None:
+        return
+    tree = mat.node_tree
+    color_shader_nodes = {
+        "BSDF_GLASS",
+        "BSDF_GLOSSY",
+        "BSDF_REFRACTION",
+        "BSDF_TRANSLUCENT",
+        "BSDF_TRANSPARENT",
+        "BSDF_SHEEN",
+    }
+    for node in tree.nodes:
+        if node.type == "BSDF_PRINCIPLED":
+            set_color_socket_white(tree, node, ["Base Color", "Specular Tint", "Coat Tint", "Sheen Tint", "Subsurface Color"])
+            set_color_socket_value(tree, node, ["Emission Color"], (0.0, 0.0, 0.0, 1.0))
+            set_scalar_socket_value(tree, node, ["Emission Strength"], 0.0)
+        elif node.type in color_shader_nodes:
+            set_color_socket_white(tree, node, ["Color"])
+        elif node.type == "EMISSION":
+            set_color_socket_value(tree, node, ["Color"], (0.0, 0.0, 0.0, 1.0))
+            set_scalar_socket_value(tree, node, ["Strength"], 0.0)
+        elif node.type in {"VOLUME_ABSORPTION", "VOLUME_SCATTER"}:
+            set_color_socket_white(tree, node, ["Color"])
+
+
+def make_colorless_optical_material(source: bpy.types.Material) -> bpy.types.Material:
+    safe_name = source.name.replace("/", "_")
+    mat = source.copy()
+    mat.name = f"TL_pbr_white_shading_optical_{safe_name}"
+    diffuse = getattr(mat, "diffuse_color", (1.0, 1.0, 1.0, 1.0))
+    alpha = float(diffuse[3]) if len(diffuse) > 3 else 1.0
+    mat.diffuse_color = (1.0, 1.0, 1.0, alpha)
+    neutralize_material_color_channels(mat)
+    return mat
+
+
+def optical_override_material(
+    source: bpy.types.Material | None,
+    white_material: bpy.types.Material,
+    cache: dict[str, bpy.types.Material],
+    preserve_optical: bool,
+) -> bpy.types.Material:
+    if preserve_optical and material_is_optical(source):
+        key = source.name if source else "__none__"
+        if key not in cache and source is not None:
+            cache[key] = make_colorless_optical_material(source)
+        return cache.get(key, white_material)
+    return white_material
+
+
+def apply_white_diffuse_material_override(
+    material: bpy.types.Material,
+    preserve_optical: bool = False,
+) -> tuple[dict[str, list[bpy.types.Material]], dict[str, bpy.types.Material]]:
+    snapshot = object_material_snapshot()
+    optical_cache: dict[str, bpy.types.Material] = {}
+    for obj in bpy.data.objects:
+        if obj.type != "MESH":
+            continue
+        original = snapshot.get(obj.name, [])
+        source_materials = original or [None]
+        obj.data.materials.clear()
+        for source in source_materials:
+            obj.data.materials.append(optical_override_material(source, material, optical_cache, preserve_optical))
+    return snapshot, optical_cache
+
+
+def light_color_snapshot() -> dict[str, tuple[float, float, float]]:
+    return {
+        obj.name: tuple(float(channel) for channel in obj.data.color)
+        for obj in bpy.data.objects
+        if obj.type == "LIGHT" and hasattr(obj.data, "color")
+    }
+
+
+def set_all_light_colors(color: tuple[float, float, float]) -> None:
+    for obj in bpy.data.objects:
+        if obj.type == "LIGHT" and hasattr(obj.data, "color"):
+            obj.data.color = color
+
+
+def restore_light_colors(snapshot: dict[str, tuple[float, float, float]]) -> None:
+    for obj in bpy.data.objects:
+        if obj.type == "LIGHT" and obj.name in snapshot and hasattr(obj.data, "color"):
+            obj.data.color = snapshot[obj.name]
+
+
+def render_white_diffuse_component(scene_dir: Path, rel_base: str, config: dict, white_config: dict) -> dict:
+    material = make_white_diffuse_override_material()
+    preserve_optical = str(white_config.get("mode", "optical")).lower() == "optical"
+    material_snapshot, optical_cache = apply_white_diffuse_material_override(material, preserve_optical=preserve_optical)
+    bounce_snapshot = cycles_bounce_snapshot()
+    light_snapshot = light_color_snapshot()
+    try:
+        if bool(white_config.get("force_white_light", True)):
+            set_all_light_colors((1.0, 1.0, 1.0))
+        if preserve_optical:
+            set_optical_cycles_bounces(white_config)
+        elif bool(white_config.get("direct_only", True)):
+            set_direct_only_cycles_bounces()
+        return render_component(scene_dir, rel_base, config)
+    finally:
+        restore_light_colors(light_snapshot)
+        restore_cycles_bounces(bounce_snapshot)
+        restore_object_materials(material_snapshot)
+        for mat in optical_cache.values():
+            if mat.users == 0:
+                bpy.data.materials.remove(mat)
+
+
 def render_material_property_map(scene_dir: Path, rel_path: str, property_name: str, fallback: float) -> str:
     snapshot = object_material_snapshot()
+    world_snapshot = scene_world_snapshot()
     cache: dict[float, bpy.types.Material] = {}
     try:
         for obj in bpy.data.objects:
@@ -2234,6 +2834,7 @@ def render_material_property_map(scene_dir: Path, rel_path: str, property_name: 
         render_exr(scene_dir / rel_path)
     finally:
         restore_object_materials(snapshot)
+        restore_scene_world(world_snapshot)
     return rel_path
 
 
@@ -2350,7 +2951,7 @@ def render_pbr_pass_maps(scene_dir: Path, config: dict) -> dict:
 
     old_filepath = scene.render.filepath
     try:
-        bpy.ops.render.render(write_still=False)
+        run_blender_render(scene_dir / "pbr" / "passes.exr", write_still=False)
         outputs = {
             "depth": "pbr/depth.exr",
             "normal": "pbr/normal.exr",
@@ -2436,6 +3037,84 @@ def sample_jittered_grid_positions(
     return sampled
 
 
+def sample_uniform_random_positions(
+    pr: dict,
+    count: int,
+    rng: random.Random,
+    spatial: dict,
+    existing_positions: list[list[float]],
+) -> list[list[float]]:
+    min_distance = max(float(spatial.get("min_position_distance", 0.0)), 0.0)
+    max_attempts = max(int(spatial.get("random_attempts", 64)), 1)
+    sampled: list[list[float]] = []
+    for _ in range(count):
+        candidate: list[float] | None = None
+        fallback: list[float] | None = None
+        for _attempt in range(max_attempts):
+            coords = [rng.uniform(*pr["x"]), rng.uniform(*pr["y"]), rng.uniform(*pr["z"])]
+            fallback = coords
+            if respects_min_position_distance(coords, existing_positions + sampled, min_distance):
+                candidate = coords
+                break
+        sampled.append(candidate or fallback or [0.0, 0.0, 0.0])
+    return sampled
+
+
+def sample_jittered_grid_candidates(
+    pr: dict,
+    count: int,
+    rng: random.Random,
+    spatial: dict,
+    existing_positions: list[list[float]],
+    source: str,
+) -> list[dict]:
+    side = int(spatial.get("grid_resolution") or math.ceil(count ** (1.0 / 3.0)))
+    side = max(1, side)
+    while side**3 < count:
+        side += 1
+    jitter = min(max(float(spatial.get("jitter", 0.8)), 0.0), 1.0)
+    min_distance = max(float(spatial.get("min_position_distance", 0.0)), 0.0)
+    max_attempts = max(int(spatial.get("jitter_attempts", 32)), 1)
+    ranges = [pr["x"], pr["y"], pr["z"]]
+    cells = [(ix, iy, iz) for iz in range(side) for iy in range(side) for ix in range(side)]
+    rng.shuffle(cells)
+
+    candidates: list[dict] = []
+    for cell in cells:
+        if len(candidates) >= count:
+            break
+        candidate: list[float] | None = None
+        fallback: list[float] | None = None
+        for attempt_in_cell in range(max_attempts):
+            coords = [
+                jittered_cell_coordinate(rng, axis_range, cell_index, side, jitter)
+                for cell_index, axis_range in zip(cell, ranges)
+            ]
+            fallback = coords
+            if respects_min_position_distance(coords, existing_positions + [row["canonical_position"] for row in candidates], min_distance):
+                candidate = coords
+                break
+        candidates.append(
+            {
+                "canonical_position": candidate or fallback or [0.0, 0.0, 0.0],
+                "candidate_source": source,
+                "grid_cell": [int(cell[0]), int(cell[1]), int(cell[2])],
+                "grid_resolution": side,
+            }
+        )
+    return candidates
+
+
+def sample_random_point_candidate(pr: dict, rng: random.Random, spatial: dict, existing_positions: list[list[float]], source: str) -> dict:
+    position = sample_uniform_random_positions(pr, 1, rng, spatial, existing_positions)[0]
+    return {
+        "canonical_position": position,
+        "candidate_source": source,
+        "grid_cell": None,
+        "grid_resolution": None,
+    }
+
+
 def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[float]]:
     spatial = config["spatial"]
     count = int(spatial.get("positions_per_scene", 64))
@@ -2454,6 +3133,15 @@ def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[floa
         )
     remaining = count - len(positions)
     sampling = spatial.get("sampling", "stratified_random")
+    if remaining > 0 and sampling == "grid_plus_random":
+        side = max(1, int(spatial.get("grid_resolution") or 4))
+        grid_count = min(remaining, int(spatial.get("grid_sample_count", side**3)))
+        grid_spatial = dict(spatial)
+        grid_spatial["grid_resolution"] = side
+        positions.extend(sample_jittered_grid_positions(pr, grid_count, rng, grid_spatial, positions))
+        remaining = count - len(positions)
+        if remaining > 0:
+            positions.extend(sample_uniform_random_positions(pr, remaining, rng, spatial, positions))
     if remaining > 0 and sampling == "jittered_grid":
         positions.extend(sample_jittered_grid_positions(pr, remaining, rng, spatial, positions))
     if remaining > 0 and sampling in {"stratified_random", "grid"}:
@@ -2475,9 +3163,8 @@ def sample_spatial_positions(config: dict, rng: random.Random) -> list[list[floa
                     coords.append(rng.uniform(cell_lo, cell_hi))
             positions.append(coords)
     while len(positions) < count:
-        positions.append([rng.uniform(*pr["x"]), rng.uniform(*pr["y"]), rng.uniform(*pr["z"])])
+        positions.extend(sample_uniform_random_positions(pr, count - len(positions), rng, spatial, positions))
     return positions[:count]
-
 
 def debug_light_material(layer_index: int) -> bpy.types.Material:
     palette = [
@@ -2528,23 +3215,51 @@ def add_debug_light_volume_bounds(config: dict, camera: bpy.types.Object, center
         for iy in range(2)
         for iz in range(2)
     }
-    edges = []
+    edges: list[tuple[tuple[int, int, int], tuple[int, int, int], str]] = []
     for ix in range(2):
         for iy in range(2):
-            edges.append(((ix, iy, 0), (ix, iy, 1)))
+            edges.append(((ix, iy, 0), (ix, iy, 1), "z"))
     for ix in range(2):
         for iz in range(2):
-            edges.append(((ix, 0, iz), (ix, 1, iz)))
+            edges.append(((ix, 0, iz), (ix, 1, iz), "y"))
     for iy in range(2):
         for iz in range(2):
-            edges.append(((0, iy, iz), (1, iy, iz)))
+            edges.append(((0, iy, iz), (1, iy, iz), "x"))
 
-    material = make_emission_mat("TL_debug_light_volume_bounds_mat", (1.0, 1.0, 1.0), strength=1.0)
-    bevel_depth = float(config["canonical"].get("debug_line_bevel", 0.006)) * canonical_world_scale(config)
-    return [
-        create_debug_curve_line(f"TL_Debug_LightVolume_{i:02d}", corners[a], corners[b], material, bevel_depth=bevel_depth)
-        for i, (a, b) in enumerate(edges)
+    canonical = config["canonical"]
+    default_colors = {
+        "x": (1.0, 0.35, 0.08),
+        "y": (0.05, 0.8, 1.0),
+        "z": (0.35, 1.0, 0.25),
+    }
+    color_cfg = canonical.get("debug_cube_edge_colors", {})
+
+    def edge_color(axis: str) -> tuple[float, float, float]:
+        value = color_cfg.get(axis, default_colors[axis]) if isinstance(color_cfg, dict) else default_colors[axis]
+        return (float(value[0]), float(value[1]), float(value[2]))
+
+    strength = float(canonical.get("debug_cube_edge_strength", 2.5))
+    materials = {
+        axis: make_emission_mat(f"TL_debug_light_volume_{axis}_mat", edge_color(axis), strength=strength)
+        for axis in ("x", "y", "z")
+    }
+    world_scale = canonical_axis_scaled_world_scale(config)
+    line_scale = float(canonical.get("debug_cube_line_scale", 2.0))
+    bevel_depth = float(canonical.get("debug_line_bevel", 0.006)) * world_scale * line_scale
+    debug_objects = [
+        create_debug_curve_line(f"TL_Debug_LightVolume_{i:02d}", corners[a], corners[b], materials[axis], bevel_depth=bevel_depth)
+        for i, (a, b, axis) in enumerate(edges)
     ]
+    if bool(canonical.get("debug_cube_corner_markers", True)):
+        corner_radius = float(canonical.get("debug_cube_corner_radius", canonical.get("debug_marker_radius", 0.02))) * world_scale
+        corner_material = make_emission_mat("TL_debug_light_volume_corner_mat", (1.0, 1.0, 1.0), strength=strength)
+        for i, key in enumerate(sorted(corners)):
+            bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=4, radius=corner_radius, location=corners[key])
+            marker = bpy.context.object
+            marker.name = f"TL_Debug_LightVolumeCorner_{i:02d}"
+            marker.data.materials.append(corner_material)
+            debug_objects.append(marker)
+    return debug_objects
 
 
 def debug_light_volume_points(config: dict, camera: bpy.types.Object, center: Vector) -> list[Vector]:
@@ -2569,7 +3284,7 @@ def render_light_position_preview(
 ) -> str:
     debug_objects = add_debug_light_volume_bounds(config, camera, center)
     z_layers = debug_light_z_layers(positions)
-    marker_radius = float(config["canonical"].get("debug_marker_radius", 0.02)) * canonical_world_scale(config)
+    marker_radius = float(config["canonical"].get("debug_marker_radius", 0.02)) * canonical_axis_scaled_world_scale(config)
     for i, p_can in enumerate(positions):
         p_world = canonical_to_world(p_can, camera, config, center)
         bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=marker_radius, location=p_world)
@@ -2697,6 +3412,7 @@ def render_global_diffuse_components(
 
 
 def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random, camera: bpy.types.Object, center: Vector) -> dict:
+    white_only = bool(config.get("_pbr_white_shading_only", False))
     ambient_source = str(config.get("_ambient_source", "hdri")).lower()
     point_light_mode = str(config.get("_point_light_mode", "component")).lower()
     render_point_light_targets = point_light_mode in {"target", "additive", "add-to-scene", "scene-plus-light"}
@@ -2710,121 +3426,323 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         source = set_hdri_world(hdri_path, hdri_strength, hdri_rotation, ambient.get("fallback_color", [0.78, 0.78, 0.78]))
         source["hdri_mode"] = hdri_mode
         remove_all_lights()
-    ambient_output = render_component(scene_dir, "spatial/ambient", config)
-    ambient_render = ambient_output["primary"]
-    ambient_png = f"../preview/{scene_dir.name}_ambient.png"
-    write_component_preview_png(scene_dir, ambient_output, ambient_png, config)
-    global_diffuse_meta = render_global_diffuse_components(scene_dir, config, camera, center, source, ambient_output)
-    positions = sample_spatial_positions(config, rng)
+    ambient_output = None
+    ambient_render = None
+    ambient_png = None
+    global_diffuse_meta = None
+    if not white_only:
+        ambient_output = render_component(scene_dir, "spatial/ambient", config)
+        ambient_render = ambient_output["primary"]
+        ambient_png = f"../preview/{scene_dir.name}_ambient.png"
+        write_component_preview_png(scene_dir, ambient_output, ambient_png, config)
+        global_diffuse_meta = render_global_diffuse_components(scene_dir, config, camera, center, source, ambient_output)
+    spatial = config["spatial"]
+    valid_filter = point_light_valid_filter_config(spatial)
+    target_point_count = int(spatial.get("positions_per_scene", 64))
+    candidate_attempts: list[dict] = []
+    final_positions: list[list[float]] = []
+    initial_candidates: list[dict] = []
+    if valid_filter["enabled"]:
+        pr = config["canonical"]["position_range"]
+        initial_spatial = dict(spatial)
+        initial_spatial["grid_resolution"] = int(valid_filter["grid_resolution"])
+        initial_candidates = sample_jittered_grid_candidates(
+            pr,
+            min(target_point_count, int(valid_filter["grid_resolution"]) ** 3),
+            rng,
+            initial_spatial,
+            [],
+            "grid_initial",
+        )
+        positions = [row["canonical_position"] for row in initial_candidates]
+    else:
+        positions = sample_spatial_positions(config, rng)
     light_position_preview = None
-    if config.get("_light_preview", False):
-        light_position_preview = render_light_position_preview(scene_dir, positions, config, camera, center)
-    pbr_maps = render_pbr_maps(scene_dir, config) if config.get("_render_pbr", False) else None
+    pbr_maps = render_pbr_maps(scene_dir, config) if config.get("_render_pbr", False) and not white_only else None
+    white_shading_config = config.get("_pbr_white_shading", pbr_white_shading_config(config))
+    white_shading_enabled = bool(config.get("_render_pbr_white_shading", False))
+    white_meta_key = white_shading_meta_key(white_shading_config)
 
     lights_meta = []
-    spatial = config["spatial"]
     include_hdri_in_point_lights = bool(spatial.get("include_hdri_in_point_lights", False))
-    include_ambient_in_point_lights = render_point_light_targets or include_hdri_in_point_lights
+    include_ambient_in_point_lights = False if white_only else render_point_light_targets or include_hdri_in_point_lights
     if not render_point_light_targets:
         if ambient_source == "scene" and not include_ambient_in_point_lights:
             remove_all_lights()
         if not include_hdri_in_point_lights:
             set_black_world()
+    if white_only:
+        remove_all_lights()
+        set_black_world()
     receiver_bounds = config["_runtime"].get("receiver_bounds")
     receiver_materials = config["_runtime"].get("receiver_materials", [])
     invalid_reference_source: str | None = "spatial/ambient" if include_ambient_in_point_lights else None
+    invalid_white_reference_source: str | None = None
     transform_meta = canonical_transform_meta(config, camera, center)
-    world_scale = float(transform_meta["scale"])
+    world_scale = float(transform_meta.get("light_world_scale", transform_meta["scale"]))
     filter_receiver_bounds = bool(spatial.get("receiver_bounds_filter", False))
     per_light_diffuse = per_light_diffuse_config(spatial)
-    per_light_diffuse_enabled = bool(per_light_diffuse.get("enabled", False))
+    per_light_diffuse_enabled = bool(per_light_diffuse.get("enabled", False)) and not white_only
     per_light_diffuse_values = control_values(per_light_diffuse, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
-    with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
-        for light_index, p_can in enumerate(pbar):
-            pbar.set_postfix(light=f"{light_index:03d}")
-            p_world = canonical_to_world(p_can, camera, config, center)
-            rel_base = f"spatial/point_lights/light_{light_index:03d}"
-            light_settings = sample_spatial_light_settings(spatial, rng, world_scale)
-            canonical_radius = float(light_settings["canonical_radius"])
-            world_radius = float(light_settings["world_radius"])
-            if filter_receiver_bounds:
-                valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
-            else:
-                valid, skip_reason = True, None
-            copied_from = None
+    render_light_color = [1.0, 1.0, 1.0]
+
+    def render_diffuse_variants_for_light(
+        light_index: int,
+        p_world: Vector,
+        light_settings: dict,
+        rel_base: str,
+        valid: bool,
+        invalid_source: str | None,
+    ) -> list[dict]:
+        diffuse_variants = []
+        if not per_light_diffuse_enabled:
+            return diffuse_variants
+        for variant_index, d_value in enumerate(per_light_diffuse_values):
+            variant_radius = radius_for_diffuse_level(d_value, per_light_diffuse)
+            variant_world_radius = variant_radius * world_scale
+            variant_base = f"{rel_base}/d_{variant_index:03d}"
+            variant_copied_from = None
             if valid:
                 light = create_point_light(
-                    f"TL_Point_{light_index:03d}",
+                    f"TL_Point_{light_index:03d}_D_{variant_index:03d}",
                     p_world,
                     float(light_settings["world_energy"]),
-                    world_radius,
-                    light_settings["component_color"],
+                    variant_world_radius,
+                    render_light_color,
                 )
-                light_output = render_component(scene_dir, rel_base, config)
-                bpy.data.objects.remove(light, do_unlink=True)
+                try:
+                    variant_output = render_component(scene_dir, variant_base, config)
+                finally:
+                    bpy.data.objects.remove(light, do_unlink=True)
             else:
-                if invalid_reference_source is None:
-                    light_output = render_component(scene_dir, rel_base, config)
-                    invalid_reference_source = rel_base
-                else:
-                    light_output = copy_component(scene_dir, invalid_reference_source, rel_base, config)
-                    copied_from = f"{invalid_reference_source}.{primary_component_format(config)}"
-            diffuse_variants = []
-            if per_light_diffuse_enabled:
-                for variant_index, d_value in enumerate(per_light_diffuse_values):
-                    variant_radius = radius_for_diffuse_level(d_value, per_light_diffuse)
-                    variant_world_radius = variant_radius * world_scale
-                    variant_base = f"{rel_base}/d_{variant_index:03d}"
-                    variant_copied_from = None
-                    if valid:
-                        light = create_point_light(
-                            f"TL_Point_{light_index:03d}_D_{variant_index:03d}",
-                            p_world,
-                            float(light_settings["world_energy"]),
-                            variant_world_radius,
-                            light_settings["component_color"],
-                        )
-                        variant_output = render_component(scene_dir, variant_base, config)
-                        bpy.data.objects.remove(light, do_unlink=True)
-                    else:
-                        variant_output = copy_component(scene_dir, invalid_reference_source or rel_base, variant_base, config)
-                        variant_copied_from = f"{invalid_reference_source or rel_base}.{primary_component_format(config)}"
-                    variant_meta = {
-                        "id": variant_index,
-                        "d": float(d_value),
-                        "normalized_diffuse": float(d_value),
-                        "canonical_radius": float(variant_radius),
-                        "world_radius": float(variant_world_radius),
-                        "copied_from": variant_copied_from,
-                    }
-                    variant_meta.update(component_meta(variant_output))
-                    diffuse_variants.append(variant_meta)
-            light_meta = {
-                "id": light_index,
-                "canonical_position": p_can,
-                "world_position": vec_to_list(p_world),
-                "valid": valid,
-                "skip_reason": skip_reason,
-                "copied_from": copied_from,
-                "canonical_energy": float(light_settings["canonical_energy"]),
-                "world_energy": float(light_settings["world_energy"]),
-                "energy": float(light_settings["world_energy"]),
-                "component_color": [float(c) for c in light_settings["component_color"]],
-                "canonical_radius": canonical_radius,
-                "world_radius": world_radius,
+                variant_output = copy_component(scene_dir, invalid_source or rel_base, variant_base, config)
+                variant_copied_from = f"{invalid_source or rel_base}.{primary_component_format(config)}"
+            variant_meta = {
+                "id": variant_index,
+                "d": float(d_value),
+                "normalized_diffuse": float(d_value),
+                "canonical_radius": float(variant_radius),
+                "world_radius": float(variant_world_radius),
+                "copied_from": variant_copied_from,
             }
-            light_meta.update(component_meta(light_output))
-            if diffuse_variants:
-                light_meta["diffuse_variants"] = diffuse_variants
-            lights_meta.append(light_meta)
+            variant_meta.update(component_meta(variant_output))
+            diffuse_variants.append(variant_meta)
+        return diffuse_variants
+
+    if valid_filter["enabled"] and white_only:
+        progress_write(f"[Relighting] point-light valid_filter is disabled for {scene_dir.name}: white-only legacy mode")
+        valid_filter["enabled"] = False
+
+    if valid_filter["enabled"]:
+        pr = config["canonical"]["position_range"]
+        max_attempts = max(target_point_count, len(initial_candidates)) + max(int(valid_filter["max_refill_attempts"]), 0)
+        keep_attempt_renders = bool(valid_filter["keep_attempt_renders"])
+        with progress_bar(range(max_attempts), total=max_attempts, desc=f"{scene_dir.name} point candidates", unit="attempt") as pbar:
+            for attempt_index in pbar:
+                if len(lights_meta) >= target_point_count:
+                    break
+                pbar.set_postfix(valid=f"{len(lights_meta)}/{target_point_count}", attempt=f"{attempt_index:04d}")
+                if attempt_index < len(initial_candidates):
+                    candidate = initial_candidates[attempt_index]
+                else:
+                    candidate = sample_random_point_candidate(pr, rng, spatial, final_positions, "random_refill")
+                p_can = [float(value) for value in candidate["canonical_position"]]
+                p_world = canonical_to_world(p_can, camera, config, center)
+                attempt_base = f"spatial/point_light_attempts/attempt_{attempt_index:04d}"
+                light_settings = sample_spatial_light_settings(spatial, rng, world_scale)
+                canonical_radius = float(light_settings["canonical_radius"])
+                world_radius = float(light_settings["world_radius"])
+                if filter_receiver_bounds:
+                    geometry_valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
+                else:
+                    geometry_valid, skip_reason = True, None
+
+                light_output = None
+                validation_stats = {"valid": False, "skip_reason": skip_reason or "geometry_rejected"}
+                if geometry_valid:
+                    light = create_point_light(
+                        f"TL_Point_Attempt_{attempt_index:04d}",
+                        p_world,
+                        float(light_settings["world_energy"]),
+                        world_radius,
+                        render_light_color,
+                    )
+                    try:
+                        light_output = render_component(scene_dir, attempt_base, config)
+                    finally:
+                        bpy.data.objects.remove(light, do_unlink=True)
+                    accepted, validation_stats = validate_point_light_component(scene_dir, light_output, valid_filter)
+                    skip_reason = None if accepted else str(validation_stats.get("skip_reason", "invalid_point_light"))
+                else:
+                    accepted = False
+
+                attempt_meta = {
+                    "attempt_index": attempt_index,
+                    "candidate_source": candidate.get("candidate_source"),
+                    "grid_cell": candidate.get("grid_cell"),
+                    "grid_resolution": candidate.get("grid_resolution"),
+                    "canonical_position": p_can,
+                    "world_position": vec_to_list(p_world),
+                    "geometry_valid": geometry_valid,
+                    "valid": accepted,
+                    "skip_reason": skip_reason,
+                    "validation": validation_stats,
+                    "accepted_light_id": None,
+                }
+                if keep_attempt_renders and light_output:
+                    attempt_meta["attempt_output"] = component_meta(light_output)
+
+                if accepted:
+                    light_index = len(lights_meta)
+                    rel_base = f"spatial/point_lights/light_{light_index:03d}"
+                    final_output = copy_component(scene_dir, attempt_base, rel_base, config)
+                    if not keep_attempt_renders:
+                        remove_component_files(scene_dir, attempt_base, config)
+                    diffuse_variants = render_diffuse_variants_for_light(light_index, p_world, light_settings, rel_base, True, None)
+                    light_meta = {
+                        "id": light_index,
+                        "attempt_index": attempt_index,
+                        "candidate_source": candidate.get("candidate_source"),
+                        "grid_cell": candidate.get("grid_cell"),
+                        "grid_resolution": candidate.get("grid_resolution"),
+                        "canonical_position": p_can,
+                        "world_position": vec_to_list(p_world),
+                        "valid": True,
+                        "skip_reason": None,
+                        "copied_from": f"{attempt_base}.{primary_component_format(config)}",
+                        "canonical_energy": float(light_settings["canonical_energy"]),
+                        "world_energy": float(light_settings["world_energy"]),
+                        "energy": float(light_settings["world_energy"]),
+                        "component_color": [float(c) for c in render_light_color],
+                        "render_color": [float(c) for c in render_light_color],
+                        "component_color_semantics": "basis_render_color",
+                        "canonical_radius": canonical_radius,
+                        "world_radius": world_radius,
+                        "validation": validation_stats,
+                    }
+                    light_meta.update(component_meta(final_output))
+                    if diffuse_variants:
+                        light_meta["diffuse_variants"] = diffuse_variants
+                    attempt_meta["accepted_light_id"] = light_index
+                    lights_meta.append(light_meta)
+                    final_positions.append(p_can)
+                elif light_output and not keep_attempt_renders:
+                    remove_component_files(scene_dir, attempt_base, config)
+                candidate_attempts.append(attempt_meta)
+
+        if len(lights_meta) < target_point_count:
+            message = (
+                f"{scene_dir.name}: valid point-light filter accepted {len(lights_meta)}/"
+                f"{target_point_count} after {len(candidate_attempts)} attempts"
+            )
+            if bool(valid_filter["require_target_count"]):
+                raise RuntimeError(message)
+            progress_write(f"[Relighting] WARNING {message}")
+    else:
+        with progress_bar(positions, total=len(positions), desc=f"{scene_dir.name} point lights", unit="light") as pbar:
+            for light_index, p_can in enumerate(pbar):
+                pbar.set_postfix(light=f"{light_index:03d}")
+                p_world = canonical_to_world(p_can, camera, config, center)
+                rel_base = f"spatial/point_lights/light_{light_index:03d}"
+                light_settings = sample_spatial_light_settings(spatial, rng, world_scale)
+                canonical_radius = float(light_settings["canonical_radius"])
+                world_radius = float(light_settings["world_radius"])
+                if filter_receiver_bounds:
+                    valid, skip_reason = point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
+                else:
+                    valid, skip_reason = True, None
+                copied_from = None
+                white_output = None
+                white_copied_from = None
+                if valid:
+                    light_output = None
+                    light = create_point_light(
+                        f"TL_Point_{light_index:03d}",
+                        p_world,
+                        float(light_settings["world_energy"]),
+                        world_radius,
+                        render_light_color,
+                    )
+                    try:
+                        if not white_only:
+                            light_output = render_component(scene_dir, rel_base, config)
+                        if white_shading_enabled:
+                            white_base = white_shading_light_base(light_index, white_shading_config)
+                            white_output = render_white_diffuse_component(scene_dir, white_base, config, white_shading_config)
+                    finally:
+                        bpy.data.objects.remove(light, do_unlink=True)
+                else:
+                    light_output = None
+                    if not white_only:
+                        if invalid_reference_source is None:
+                            light_output = render_component(scene_dir, rel_base, config)
+                            invalid_reference_source = rel_base
+                        else:
+                            light_output = copy_component(scene_dir, invalid_reference_source, rel_base, config)
+                            copied_from = f"{invalid_reference_source}.{primary_component_format(config)}"
+                    if white_shading_enabled:
+                        white_base = white_shading_light_base(light_index, white_shading_config)
+                        if invalid_white_reference_source is None:
+                            white_output = render_white_diffuse_component(scene_dir, white_base, config, white_shading_config)
+                            invalid_white_reference_source = white_base
+                        else:
+                            white_output = copy_component(scene_dir, invalid_white_reference_source, white_base, config)
+                            white_copied_from = f"{invalid_white_reference_source}.{primary_component_format(config)}"
+                diffuse_variants = render_diffuse_variants_for_light(
+                    light_index,
+                    p_world,
+                    light_settings,
+                    rel_base,
+                    valid,
+                    invalid_reference_source,
+                )
+                light_meta = {
+                    "id": light_index,
+                    "canonical_position": p_can,
+                    "world_position": vec_to_list(p_world),
+                    "valid": valid,
+                    "skip_reason": skip_reason,
+                    "copied_from": copied_from,
+                    "canonical_energy": float(light_settings["canonical_energy"]),
+                    "world_energy": float(light_settings["world_energy"]),
+                    "energy": float(light_settings["world_energy"]),
+                    "component_color": [float(c) for c in render_light_color],
+                    "render_color": [float(c) for c in render_light_color],
+                    "component_color_semantics": "basis_render_color",
+                    "canonical_radius": canonical_radius,
+                    "world_radius": world_radius,
+                }
+                if light_output:
+                    light_meta.update(component_meta(light_output))
+                if white_output:
+                    light_meta[white_meta_key] = component_meta(white_output)
+                    if white_only:
+                        light_meta["render"] = white_output["primary"]
+                    if white_copied_from:
+                        light_meta[white_meta_key]["copied_from"] = white_copied_from
+                if diffuse_variants:
+                    light_meta["diffuse_variants"] = diffuse_variants
+                lights_meta.append(light_meta)
+                final_positions.append(p_can)
+
+    if config.get("_light_preview", False):
+        light_position_preview = render_light_position_preview(
+            scene_dir,
+            final_positions or positions,
+            config,
+            camera,
+            center,
+        )
     return {
         "ambient_render": ambient_render,
-        "ambient_output": component_meta(ambient_output),
+        "ambient_output": component_meta(ambient_output) if ambient_output else None,
         "ambient_png": ambient_png,
         "light_position_preview": light_position_preview,
         "ambient_source": source,
         "global_diffuse": global_diffuse_meta,
         "pbr_maps": pbr_maps,
+        "pbr_white_shading": white_shading_config if white_shading_enabled else None,
+        "pbr_white_shading_only": white_only,
         "light_volume_center": vec_to_list(center),
         "light_volume_center_source": config.get("_runtime", {}).get("light_volume_center_source", "bbox_center"),
         "light_volume_adjustment": config.get("_runtime", {}).get("light_volume_adjustment"),
@@ -2835,12 +3753,31 @@ def render_spatial_components(scene_dir: Path, config: dict, rng: random.Random,
         "positions_per_scene": int(spatial.get("positions_per_scene", 64)),
         "position_sampling": spatial.get("sampling", "stratified_random"),
         "grid_resolution": spatial.get("grid_resolution"),
+        "grid_sample_count": spatial.get("grid_sample_count"),
+        "random_extra_count": spatial.get("random_extra_count"),
         "jitter": spatial.get("jitter"),
         "min_position_distance": spatial.get("min_position_distance"),
         "valid_point_light_count": sum(1 for light in lights_meta if light["valid"]),
         "invalid_point_light_count": sum(1 for light in lights_meta if not light["valid"]),
+        "valid_filter": {
+            "enabled": bool(valid_filter.get("enabled", False)),
+            "grid_resolution": int(valid_filter.get("grid_resolution", spatial.get("grid_resolution", 4))),
+            "p99_luminance_threshold": float(valid_filter.get("p99_luminance_threshold", 0.01)),
+            "nonzero_pixel_ratio_threshold": float(valid_filter.get("nonzero_pixel_ratio_threshold", 0.001)),
+            "nonzero_luminance_threshold": float(valid_filter.get("nonzero_luminance_threshold", 1.0e-4)),
+            "max_refill_attempts": int(valid_filter.get("max_refill_attempts", 256)),
+            "require_target_count": bool(valid_filter.get("require_target_count", True)),
+            "attempt_count": len(candidate_attempts) if candidate_attempts else len(lights_meta),
+            "initial_grid_candidate_count": len(initial_candidates),
+            "random_refill_attempt_count": sum(1 for row in candidate_attempts if row.get("candidate_source") == "random_refill"),
+            "accepted_count": len(lights_meta),
+        },
+        "candidate_attempts": candidate_attempts if candidate_attempts else None,
         "point_light_mode": point_light_mode,
-        "point_light_output_semantics": "ambient_plus_point_light_target" if render_point_light_targets else "isolated_point_light_component",
+        "point_light_basis_color": [1.0, 1.0, 1.0],
+        "point_light_output_semantics": (
+            "ambient_plus_white_point_light_target" if render_point_light_targets else "isolated_white_point_light_component"
+        ),
         "include_hdri_in_point_lights": include_hdri_in_point_lights,
         "include_ambient_source_in_point_lights": include_ambient_in_point_lights,
         "color_range": spatial.get("color_range"),
@@ -2911,6 +3848,7 @@ def render_diffuse_components(scene_dir: Path, config: dict, rng: random.Random,
 
 
 def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -> dict:
+    white_only = bool(config.get("_pbr_white_shading_only", False))
     rng = random.Random(int(config["seed"]) + scene_index)
     clear_scene()
     setup_render_settings(config)
@@ -2982,6 +3920,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
                 "engine": bpy.context.scene.render.engine,
                 "linear_rgb": True,
                 "tone_mapping_applied": False,
+                "light_transport": light_transport_meta(config),
             },
             "canonical": config["canonical"],
             "debug": {
@@ -2998,7 +3937,7 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
         write_json(scene_dir / "meta.json", meta)
         return meta
 
-    mask_path = render_object_mask(scene_dir, subject_objects)
+    mask_path = None if white_only else render_object_mask(scene_dir, subject_objects)
 
     meta = {
         "schema": "tokenlight_synthetic_components_v1",
@@ -3021,14 +3960,16 @@ def render_object_scene(scene_index: int, config: dict, root: Path, only: str) -
             "engine": bpy.context.scene.render.engine,
             "linear_rgb": True,
             "tone_mapping_applied": False,
+            "light_transport": light_transport_meta(config),
         },
         "canonical": config["canonical"],
-        "masks": {"object": mask_path},
     }
+    if mask_path:
+        meta["masks"] = {"object": mask_path}
 
-    if only in ("all", "spatial") and config["spatial"].get("enabled", True):
+    if (white_only or only in ("all", "spatial")) and config["spatial"].get("enabled", True):
         meta["spatial"] = render_spatial_components(scene_dir, config, rng, camera, center)
-    if only in ("all", "diffuse") and config["diffuse"].get("enabled", True):
+    if not white_only and only in ("all", "diffuse") and config["diffuse"].get("enabled", True):
         meta["diffuse"] = render_diffuse_components(scene_dir, config, rng, camera, center)
 
     write_json(scene_dir / "meta.json", meta)
@@ -3206,6 +4147,26 @@ def main() -> int:
         config.setdefault("global_diffuse", {})["enabled"] = bool(args.global_diffuse)
     if args.per_light_diffuse is not None:
         config.setdefault("spatial", {}).setdefault("per_light_diffuse", {})["enabled"] = bool(args.per_light_diffuse)
+    if args.pbr_white_shading is not None:
+        raw_white = config.setdefault("render", {}).get("pbr_white_shading")
+        if isinstance(raw_white, dict):
+            raw_white["enabled"] = bool(args.pbr_white_shading)
+        else:
+            config["render"]["pbr_white_shading"] = bool(args.pbr_white_shading)
+    if args.pbr_white_shading_only:
+        raw_white = config.setdefault("render", {}).get("pbr_white_shading")
+        if isinstance(raw_white, dict):
+            raw_white["enabled"] = True
+            raw_white["mode"] = "optical"
+            raw_white["direct_only"] = False
+            raw_white.setdefault("output_root", "pbr/white_shading_optical")
+        else:
+            config["render"]["pbr_white_shading"] = {
+                "enabled": True,
+                "mode": "optical",
+                "direct_only": False,
+                "output_root": "pbr/white_shading_optical",
+            }
     config["_component_format"] = str(config["render"].get("component_format", "exr")).lower()
     config["_ambient_source"] = (
         args.ambient_source
@@ -3216,9 +4177,15 @@ def main() -> int:
         or str(config.get("spatial", {}).get("point_light_mode", config.get("point_light_mode", "component"))).lower()
     )
     config["_hdri_mode"] = args.hdri_mode or str(config.get("ambient", {}).get("hdri_mode", "on")).lower()
-    config["_debug_preview_only"] = bool(args.debug)
+    config["_pbr_white_shading_only"] = bool(args.pbr_white_shading_only)
+    config["_debug_preview_only"] = bool(args.debug and not args.pbr_white_shading_only)
     config["_light_preview"] = bool(args.light_preview or args.debug_light_preview or args.debug)
-    config["_render_pbr"] = bool(args.pbr)
+    config["_render_pbr"] = bool(args.pbr and not args.pbr_white_shading_only)
+    config["_soft_light_transport"] = bool(args.soft_light_transport)
+    config["_pbr_white_shading"] = pbr_white_shading_config(config)
+    config["_render_pbr_white_shading"] = bool(
+        (config["_render_pbr"] or config["_pbr_white_shading_only"]) and config["_pbr_white_shading"]["enabled"]
+    )
 
     object_manifest = resolve_path(root, config.get("object_manifest"))
     hdri_manifest = resolve_path(root, config.get("hdri_manifest"))
@@ -3240,15 +4207,16 @@ def main() -> int:
 
     output_root = resolve_path(root, config["output_root"]) or (root / "outputs/tokenlight_synthetic")
     metas = []
-    if args.only in ("all", "spatial", "diffuse"):
+    render_only = "spatial" if args.pbr_white_shading_only else args.only
+    if render_only in ("all", "spatial", "diffuse"):
         scene_indices = range(args.start_index, args.start_index + scene_count)
         with progress_bar(scene_indices, total=scene_count, desc="Object scenes", unit="scene") as pbar:
             for i in pbar:
                 pbar.set_postfix(scene=f"{i:06d}")
                 progress_write(f"[Relighting] Rendering object scene {i}")
-                metas.append(render_object_scene(i, config, root, args.only))
+                metas.append(render_object_scene(i, config, root, render_only))
 
-    if not args.debug and args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
+    if not args.debug and not args.pbr_white_shading_only and args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
         fixture_rows = config["_runtime"]["fixture_scenes"]
         if fixture_rows and config["fixtures"].get("render_if_manifest_exists", True):
             with progress_bar(fixture_rows, total=len(fixture_rows), desc="Fixture scenes", unit="scene") as pbar:
