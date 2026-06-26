@@ -9,6 +9,7 @@ import random
 import shutil
 import sys
 import time
+import traceback
 from array import array
 from contextlib import contextmanager
 from pathlib import Path
@@ -78,6 +79,11 @@ def parse_args() -> argparse.Namespace:
         "--soft-light-transport",
         action="store_true",
         help="Use the previous Cycles light transport settings instead of the default direct-limited transport.",
+    )
+    parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop on the first failed object scene instead of recording the failure and continuing.",
     )
     parser.add_argument("--only", choices=["all", "spatial", "diffuse", "fixtures"], default="all")
     return parser.parse_args(argv)
@@ -4120,6 +4126,23 @@ def vec_to_list(v: Vector) -> list[float]:
     return [float(v.x), float(v.y), float(v.z)]
 
 
+def write_failed_object_scene(output_root: Path, scene_index: int, render_only: str, exc: Exception) -> dict:
+    scene_id = f"scene_{scene_index:06d}"
+    record = {
+        "schema": "tokenlight_failed_object_scene_v1",
+        "scene_id": scene_id,
+        "scene_type": "object_centric",
+        "scene_index": int(scene_index),
+        "render_only": render_only,
+        "error_type": type(exc).__name__,
+        "error": str(exc),
+        "traceback": traceback.format_exc(),
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    write_json(output_root / "failed_scenes" / f"{scene_id}_error.json", record)
+    return record
+
+
 def main() -> int:
     args = parse_args()
     root = Path(__file__).resolve().parents[1]
@@ -4207,6 +4230,7 @@ def main() -> int:
 
     output_root = resolve_path(root, config["output_root"]) or (root / "outputs/tokenlight_synthetic")
     metas = []
+    failed_metas = []
     render_only = "spatial" if args.pbr_white_shading_only else args.only
     if render_only in ("all", "spatial", "diffuse"):
         scene_indices = range(args.start_index, args.start_index + scene_count)
@@ -4214,7 +4238,17 @@ def main() -> int:
             for i in pbar:
                 pbar.set_postfix(scene=f"{i:06d}")
                 progress_write(f"[Relighting] Rendering object scene {i}")
-                metas.append(render_object_scene(i, config, root, render_only))
+                try:
+                    metas.append(render_object_scene(i, config, root, render_only))
+                except Exception as exc:
+                    if args.fail_fast:
+                        raise
+                    failed = write_failed_object_scene(output_root, i, render_only, exc)
+                    failed_metas.append(failed)
+                    progress_write(
+                        f"[Relighting] WARNING skipping {failed['scene_id']} after "
+                        f"{failed['error_type']}: {failed['error']}"
+                    )
 
     if not args.debug and not args.pbr_white_shading_only and args.only in ("all", "fixtures") and config["fixtures"].get("enabled", True):
         fixture_rows = config["_runtime"]["fixture_scenes"]
@@ -4241,7 +4275,18 @@ def main() -> int:
             "hdri_mode": config["_hdri_mode"],
         },
         "scene_count_written": len(metas),
+        "scene_count_failed": len(failed_metas),
         "scenes": [{"scene_id": m["scene_id"], "scene_type": m["scene_type"], "meta": f"scenes/{m['scene_id']}/meta.json"} for m in metas],
+        "failed_scenes": [
+            {
+                "scene_id": m["scene_id"],
+                "scene_type": m["scene_type"],
+                "error_type": m["error_type"],
+                "error": m["error"],
+                "record": f"failed_scenes/{m['scene_id']}_error.json",
+            }
+            for m in failed_metas
+        ],
     }
     write_json(output_root / "dataset_manifest.json", manifest)
     progress_write(f"[Relighting] Wrote manifest: {output_root / 'dataset_manifest.json'}")
