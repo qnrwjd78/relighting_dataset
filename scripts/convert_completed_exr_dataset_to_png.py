@@ -17,6 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+LIGHTING_PNG_GAMMA = 2.2
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -359,12 +361,16 @@ def sample_global_background(
 
 
 def save_png(linear, path: Path) -> None:
+    import numpy as np
     from PIL import Image
 
     from tokenlight_dataset.tonemap import reinhard, to_uint8
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(to_uint8(reinhard(linear)), mode="RGB").save(path, compress_level=1)
+    mapped = reinhard(linear)
+    if LIGHTING_PNG_GAMMA > 0.0:
+        mapped = np.power(np.clip(mapped, 0.0, 1.0), 1.0 / LIGHTING_PNG_GAMMA)
+    Image.fromarray(to_uint8(mapped), mode="RGB").save(path, compress_level=1)
 
 
 def save_unit_png(img, path: Path) -> None:
@@ -447,10 +453,13 @@ def render_pbr_aux_samples(scene_dir: Path, scene_dest: Path, meta: dict[str, An
             continue
         img, channels = read_pbr_exr(source_path)
         encoded, encoding_meta = normalize_pbr_png(aux_type, img)
-        rel_path = Path("samples") / f"pbr_{aux_type}.png"
+        rel_path = Path("pbr") / f"{aux_type}.png"
         out_path = scene_dest / rel_path
         if overwrite or not out_path.exists():
             save_unit_png(encoded, out_path)
+        legacy_path = scene_dest / "samples" / f"pbr_{aux_type}.png"
+        if legacy_path.exists():
+            legacy_path.unlink()
         samples.append(
             {
                 "image": rel_path.as_posix(),
@@ -463,6 +472,19 @@ def render_pbr_aux_samples(scene_dir: Path, scene_dest: Path, meta: dict[str, An
             }
         )
     return samples
+
+
+def render_source_image(scene_dest: Path, ambient, overwrite: bool) -> dict[str, Any]:
+    rel_path = Path("source.png")
+    out_path = scene_dest / rel_path
+    if overwrite or not out_path.exists():
+        save_png(ambient, out_path)
+    return {
+        "image": rel_path.as_posix(),
+        "ambient_scale": 1.0,
+        "tonemap": "reinhard_gamma",
+        "gamma": LIGHTING_PNG_GAMMA,
+    }
 
 
 def render_global_ambient_samples(
@@ -484,6 +506,7 @@ def render_global_ambient_samples(
         samples.append(
             {
                 "image": rel_path.as_posix(),
+                "source_image": "source.png",
                 "scene_id": meta.get("scene_id"),
                 "task": "global_ambient",
                 "ambient_scale": scale,
@@ -599,6 +622,7 @@ def render_sample(
         save_png(linear, out_path)
     return {
         "image": rel_path.as_posix(),
+        "source_image": "source.png",
         "scene_id": meta.get("scene_id", scene_dir.name),
         "task": "single_light" if len(selected_lights) == 1 else "two_light",
         "global_control": global_condition,
@@ -613,6 +637,8 @@ def stage_reference_files(scene_dir: Path, scene_dest: Path, copy_existing: bool
             continue
         rel = src.relative_to(scene_dir)
         if rel.parts and rel.parts[0] == "samples":
+            continue
+        if rel.parts and rel.parts[0] == "pbr" and src.suffix.lower() == ".png":
             continue
         link_or_copy(src, scene_dest / rel, copy_existing, overwrite)
         count += 1
@@ -658,6 +684,7 @@ def stage_scene(
 
     spatial = meta["spatial"]
     ambient = read_component(scene_dir, spatial.get("ambient_output", spatial["ambient_render"]))
+    source_image = render_source_image(scene_dest, ambient, overwrite)
     lights = valid_lights(scene_dir, spatial)
     if max_single_lights > 0:
         single_candidates = lights[:max_single_lights]
@@ -765,14 +792,19 @@ def stage_scene(
         "schema": "tokenlight_composed_png_samples_v1",
         "source_scene": str(scene_dir),
         "scene_id": meta.get("scene_id", scene_dir.name),
+        "source_image": source_image["image"],
+        "source_image_control": source_image,
         "single_light_count": sum(1 for row in samples if row["task"] == "single_light"),
         "two_light_count": sum(1 for row in samples if row["task"] == "two_light"),
         "global_ambient_count": sum(1 for row in samples if row["task"] == "global_ambient"),
         "global_diffuse_count": sum(1 for row in samples if row["task"] == "global_diffuse"),
         "pbr_aux_count": sum(1 for row in samples if row["task"] == "pbr_aux"),
+        "pbr_aux": {row["aux_type"]: row["image"] for row in samples if row["task"] == "pbr_aux"},
         "ambient_scale_range": [float(ambient_scale_range[0]), float(ambient_scale_range[1])],
         "intensity_range": [float(intensity_range[0]), float(intensity_range[1])],
         "intensity_sampling": intensity_sampling,
+        "lighting_png_tonemap": "reinhard_gamma",
+        "lighting_png_gamma": LIGHTING_PNG_GAMMA,
         "color_space": "hsv",
         "color_hue_sampling": "stratified_by_sample_index",
         "color_saturation_range": [float(color_saturation_range[0]), float(color_saturation_range[1])],
@@ -875,6 +907,8 @@ def main() -> int:
         "ambient_scale_range": [args.ambient_scale_min, args.ambient_scale_max],
         "intensity_range": [args.intensity_min, args.intensity_max],
         "intensity_sampling": args.intensity_sampling,
+        "lighting_png_tonemap": "reinhard_gamma",
+        "lighting_png_gamma": LIGHTING_PNG_GAMMA,
         "color_space": "hsv",
         "color_hue_sampling": "stratified_by_sample_index",
         "color_saturation_range": [args.color_saturation_min, args.color_saturation_max],
