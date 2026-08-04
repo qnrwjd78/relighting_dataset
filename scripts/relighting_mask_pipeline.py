@@ -66,6 +66,20 @@ def threshold_token(value: float) -> str:
     return f"{max(0, int(round(float(value) * 100.0))):03d}"
 
 
+def erode_binary(mask: np.ndarray, radius: int) -> np.ndarray:
+    radius = max(int(radius), 0)
+    result = mask.astype(bool, copy=True)
+    if radius == 0:
+        return result
+    height, width = result.shape
+    padded = np.pad(result, radius, mode="constant", constant_values=False)
+    eroded = np.ones_like(result, dtype=bool)
+    for dy in range(2 * radius + 1):
+        for dx in range(2 * radius + 1):
+            eroded &= padded[dy : dy + height, dx : dx + width]
+    return eroded
+
+
 def remove_small_components(mask: np.ndarray, min_area: int) -> tuple[np.ndarray, dict]:
     height, width = mask.shape
     visited = np.zeros(mask.shape, dtype=bool)
@@ -373,9 +387,11 @@ def render_geometry_ray_masks(
     shadow_clean, shadow_stats = remove_small_components(shadow_raw, int(args.min_area))
     shadow_pad = relight.dilate_binary(shadow_clean, int(args.pad_radius)) & ~object_mask
 
+    direct_object_mask = erode_binary(object_mask, int(args.object_mask_erode_radius))
     direct_raw, direct_geometry_stats = geometry_object_direct_lit_mask(
-        config, camera, subject_objects, object_mask, light_position
+        config, camera, subject_objects, direct_object_mask, light_position
     )
+    direct_raw &= direct_object_mask
     direct_clean, direct_stats = remove_small_components(direct_raw, int(args.min_area))
 
     mask_dir = scene_dir / f"{rel_base}_masks"
@@ -404,6 +420,8 @@ def render_geometry_ray_masks(
             "direct_lit_mode": "front_facing_object_only_geometry_ray",
             "shadow_threshold": None,
             "ambient_subtracted_shadow_ratio": False,
+            "object_mask_erode_radius": int(args.object_mask_erode_radius),
+            "direct_object_mask_pixels": int(direct_object_mask.sum()),
             "object_shadow_clean_ratio": float(shadow_clean.mean()),
             "object_shadow_clean_pad16_ratio": float(shadow_pad.mean()),
             "object_direct_lit_clean_ratio": float(direct_clean.mean()),
@@ -524,9 +542,10 @@ def render_white_pair_and_masks(
 
     shadow_clean, shadow_stats = remove_small_components(shadow_raw & ~object_mask, int(args.min_area))
     shadow_pad = relight.dilate_binary(shadow_clean, int(args.pad_radius)) & ~object_mask
+    direct_object_mask = erode_binary(object_mask, int(args.object_mask_erode_radius))
     valid_scene = object_mask | receiver_mask
     direct_scale = positive_percentile(full_y[valid_scene], 95.0)
-    direct_raw = object_mask & (full_y / direct_scale >= float(args.direct_lit_threshold))
+    direct_raw = direct_object_mask & (full_y / direct_scale >= float(args.direct_lit_threshold))
     direct_clean, direct_stats = remove_small_components(direct_raw, int(args.min_area))
 
     mask_dir = scene_dir / f"{rel_base}_masks"
@@ -562,6 +581,8 @@ def render_white_pair_and_masks(
             "shadow_support_threshold": float(args.shadow_support_threshold) if args.ambient_subtracted_shadow_ratio else None,
             "point_response_p99_receiver": point_response_scale,
             "direct_p95_positive_valid_scene": direct_scale,
+            "object_mask_erode_radius": int(args.object_mask_erode_radius),
+            "direct_object_mask_pixels": int(direct_object_mask.sum()),
             "object_shadow_clean_ratio": float(shadow_clean.mean()),
             "object_shadow_clean_pad16_ratio": float(shadow_pad.mean()),
             "object_direct_lit_clean_ratio": float(direct_clean.mean()),

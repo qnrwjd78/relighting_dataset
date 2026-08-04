@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shadow-threshold", type=float, default=0.05)
     parser.add_argument("--shadow-support-threshold", type=float, default=0.001)
     parser.add_argument("--shadow-mask-mode", choices=["photometric", "geometry-ray"], default="photometric")
+    parser.add_argument("--object-mask-erode-radius", type=int, default=1)
     parser.add_argument("--min-area", type=int, default=24)
     parser.add_argument("--pad-radius", type=int, default=16)
     parser.add_argument("--seed", type=int, default=20260722)
@@ -70,6 +71,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("object sizes must be positive")
     if args.object_min_size > args.object_target_size:
         parser.error("--object-min-size must not exceed --object-target-size")
+    if args.object_mask_erode_radius < 0:
+        parser.error("--object-mask-erode-radius must be nonnegative")
     if len(set(args.gpus)) != len(args.gpus):
         parser.error("--gpus must not contain duplicate ids")
     return args
@@ -144,6 +147,8 @@ def worker_command(args: argparse.Namespace, item: dict, manifest: Path, output_
         str(args.shadow_support_threshold),
         "--shadow-mask-mode",
         args.shadow_mask_mode,
+        "--object-mask-erode-radius",
+        str(args.object_mask_erode_radius),
         "--min-area",
         str(args.min_area),
         "--pad-radius",

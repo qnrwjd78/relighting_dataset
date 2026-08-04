@@ -146,6 +146,12 @@ def parse_args() -> argparse.Namespace:
         help="Minimum unoccluded point response as a fraction of its receiver-region p99.",
     )
     parser.add_argument("--direct-lit-threshold", type=float, default=0.1)
+    parser.add_argument(
+        "--object-mask-erode-radius",
+        type=int,
+        default=1,
+        help="Erode the object mask by this many pixels before direct-lit masking (default: 1).",
+    )
     parser.add_argument("--min-area", type=int, default=24)
     parser.add_argument("--pad-radius", type=int, default=16)
     parser.add_argument(
@@ -179,6 +185,10 @@ def parse_args() -> argparse.Namespace:
         parser.error(f"--shadow-threshold must be nonnegative; got {args.shadow_threshold}")
     if args.shadow_support_threshold < 0.0:
         parser.error(f"--shadow-support-threshold must be nonnegative; got {args.shadow_support_threshold}")
+    if args.object_mask_erode_radius < 0:
+        parser.error(
+            f"--object-mask-erode-radius must be nonnegative; got {args.object_mask_erode_radius}"
+        )
     if int(args.anchor_direct_lit_rank) < 1:
         parser.error(f"--anchor-direct-lit-rank must be >= 1; got {args.anchor_direct_lit_rank}")
     if args.fixed_upper_half_white_grid and len(args.power_values) != 4:
@@ -1226,10 +1236,12 @@ def render_scene(
                     f"object_shadow_clean dilated by {int(args.pad_radius)} px, object excluded"
                 ),
                 "object_direct_lit_clean": (
-                    "front-facing object-only geometry visibility ray mask, min_area cleanup"
+                    "front-facing object-only geometry visibility ray mask, "
+                    f"object mask eroded by {int(args.object_mask_erode_radius)} px, min_area cleanup"
                     if args.shadow_mask_mode == "geometry-ray"
                     else (
                         "object direct-lit mask from white diffuse full_occ with selected scene ambient source enabled, "
+                        f"object mask eroded by {int(args.object_mask_erode_radius)} px, "
                         "norm-p95 threshold 0.1, min_area cleanup"
                     )
                 ),

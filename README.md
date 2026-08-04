@@ -200,10 +200,11 @@ python3 scripts/render_objaverse_fixed_multi_gpu.py \
 
 Launcher는 내부적으로 `CUDA_VISIBLE_DEVICES`로 각 process에 GPU 한 장만 노출하고 Blender worker에는 `--gpu-devices 0`을 전달합니다. 완료 후 output root의 `dataset_manifest.json`에 전체 성공, 실패, 누락 수를 기록합니다.
 
-조명 감쇠와 무관한 object-only geometry shadow/direct-lit mask를 사용하려면 다음 옵션을 추가합니다. `min-area 0`은 작은 component를 제거하지 않고, `pad-radius 2`는 shadow 경계만 작게 확장합니다. Geometry mode는 mask용 white render를 만들지 않습니다.
+조명 감쇠와 무관한 object-only geometry shadow/direct-lit mask를 사용하려면 다음 옵션을 추가합니다. `object-mask-erode-radius 1`은 direct-lit 계산에서 object 경계를 안쪽으로 1px 줄이고, `min-area 0`은 작은 component를 제거하지 않으며, `pad-radius 2`는 shadow 경계만 작게 확장합니다. Geometry mode는 mask용 white render를 만들지 않습니다.
 
 ```bash
 --shadow-mask-mode geometry-ray \
+--object-mask-erode-radius 1 \
 --min-area 0 \
 --pad-radius 2
 ```
