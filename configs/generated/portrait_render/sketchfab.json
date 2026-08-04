@@ -1,5 +1,5 @@
 {
-  "output_root": "outputs/portrait_exr/sketchfab_human",
+  "output_root": "outputs/portrait_ratio3p5_cube1p6_exr/sketchfab_human",
   "object_manifest": "outputs/previews/portrait_render_manifests/sketchfab_selected_objects.txt",
   "hdri_manifest": "outputs/previews/polyhaven_hdri/polyhaven_hdri_hdris.txt",
   "receiver_texture_manifest": "outputs/previews/polyhaven_textures/polyhaven_textures.json",
@@ -18,7 +18,8 @@
     "view_transform": "Standard",
     "look": "None",
     "exposure": 0.0,
-    "gamma": 1.0
+    "gamma": 1.0,
+    "resolution": 640
   },
   "camera": {
     "mode": "canonical_rig",
@@ -29,12 +30,12 @@
     ],
     "canonical_position": [
       0.0,
-      -4.5,
+      -3.5,
       0.0
     ],
     "canonical_distance_range": [
-      4.5,
-      4.5
+      3.5,
+      3.5
     ],
     "azimuth_degrees_range": [
       -35.0,
@@ -156,8 +157,8 @@
   },
   "ambient": {
     "hdri_strength_range": [
-      0.8,
-      1.2
+      0.6,
+      1.0
     ],
     "hdri_rotation_random": true,
     "hdri_mode": "on",
@@ -204,7 +205,14 @@
         -1.0,
         1.0
       ]
-    }
+    },
+    "axis_scale": [
+      1.2444444444444445,
+      1.2444444444444445,
+      1.2444444444444445
+    ],
+    "projection_reference_ratio": 4.5,
+    "projection_cube_multiplier": 1.6
   },
   "spatial": {
     "enabled": true,
@@ -217,8 +225,8 @@
     "fixed_debug_positions_first": false,
     "base_energy": 500.0,
     "energy_range": [
-      250.0,
-      900.0
+      500.0,
+      500.0
     ],
     "fixed_radius": 0.06,
     "color": [
@@ -228,9 +236,9 @@
     ],
     "color_range": [
       [
-        0.1,
-        0.1,
-        0.1
+        1.0,
+        1.0,
+        1.0
       ],
       [
         1.0,
@@ -240,7 +248,7 @@
     ],
     "intensity_range": [
       0.25,
-      2.0
+      4.0
     ],
     "radius_range": [
       0.02,
@@ -267,6 +275,16 @@
         0.4
       ],
       "radius_mapping": "linear"
+    },
+    "valid_filter": {
+      "enabled": true,
+      "grid_resolution": 4,
+      "p99_luminance_threshold": 0.01,
+      "nonzero_pixel_ratio_threshold": 0.001,
+      "nonzero_luminance_threshold": 0.0001,
+      "max_refill_attempts": 256,
+      "keep_attempt_renders": false,
+      "require_target_count": true
     }
   },
   "global_diffuse": {

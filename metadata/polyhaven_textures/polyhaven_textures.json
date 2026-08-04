@@ -1,0 +1,3734 @@
+{
+  "schema": "polyhaven_texture_manifest_v1",
+  "resolution": "2k",
+  "format_preference": "jpg",
+  "textures": [
+    {
+      "id": "brushed_concrete_04",
+      "name": "Brushed Concrete 04",
+      "download_category": "concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete_04/brushed_concrete_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_04/brushed_concrete_04_diff_2k.jpg",
+          "size": 3496508,
+          "md5": "5ed039a710dfd42392d4b854301507a1",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete_04/brushed_concrete_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_04/brushed_concrete_04_rough_2k.jpg",
+          "size": 2106737,
+          "md5": "2ee94cc5a117ff02329ea5da56422ee7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete_04/brushed_concrete_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_04/brushed_concrete_04_nor_gl_2k.jpg",
+          "size": 4283994,
+          "md5": "e9844d27db2b71ad674633da4759e7c2",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_tiles_02",
+      "name": "Concrete Tiles 02",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "tiles",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_tiles_02/concrete_tiles_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tiles_02/concrete_tiles_02_diff_2k.jpg",
+          "size": 2695971,
+          "md5": "7db6f974b91e94c395ecdcdb96329e75",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_tiles_02/concrete_tiles_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tiles_02/concrete_tiles_02_rough_2k.jpg",
+          "size": 789194,
+          "md5": "0e54945f4f4a451687d58d3395612ce4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_tiles_02/concrete_tiles_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tiles_02/concrete_tiles_02_nor_gl_2k.jpg",
+          "size": 2800699,
+          "md5": "2da0bec51e41be940d85629f8d1ff426",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_wall_006",
+      "name": "Concrete Wall 006",
+      "download_category": "concrete",
+      "asset_categories": [
+        "man made",
+        "wall",
+        "dirty",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_006/concrete_wall_006_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_006/concrete_wall_006_diff_2k.jpg",
+          "size": 3109558,
+          "md5": "604ffd4e767e1949d714ee9ee35215ca",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_006/concrete_wall_006_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_006/concrete_wall_006_rough_2k.jpg",
+          "size": 1102752,
+          "md5": "787cbb1279ff3a1d06627931fef98a48",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_006/concrete_wall_006_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_006/concrete_wall_006_nor_gl_2k.jpg",
+          "size": 4939794,
+          "md5": "856f47ebd894a492b33398f22cc8b923",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_block_wall",
+      "name": "Concrete Block Wall",
+      "download_category": "concrete",
+      "asset_categories": [
+        "wall",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_block_wall/concrete_block_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall/concrete_block_wall_diff_2k.jpg",
+          "size": 3501045,
+          "md5": "8a9e821de1c023dab880b0c6cbdb23c9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_block_wall/concrete_block_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall/concrete_block_wall_rough_2k.jpg",
+          "size": 746891,
+          "md5": "107683d85a6e35d2309583875771c428",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_block_wall/concrete_block_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall/concrete_block_wall_nor_gl_2k.jpg",
+          "size": 4302780,
+          "md5": "87f92b7f2598febfae42d2549e91e7d6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "gravel_concrete_04",
+      "name": "Gravel Concrete 04",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_04/gravel_concrete_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_04/gravel_concrete_04_diff_2k.jpg",
+          "size": 3572430,
+          "md5": "ba5a4bafa71ddd3d36ad3bfd0838a11e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_04/gravel_concrete_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_04/gravel_concrete_04_rough_2k.jpg",
+          "size": 1905488,
+          "md5": "94c98256607b5e18dbf38f70828dd2b0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_04/gravel_concrete_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_04/gravel_concrete_04_nor_gl_2k.jpg",
+          "size": 5225464,
+          "md5": "af55dc6a51bbed842e161cf26148ac19",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brushed_concrete",
+      "name": "Brushed Concrete ",
+      "download_category": "concrete",
+      "asset_categories": [
+        "man made",
+        "dirty",
+        "floor",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete/brushed_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_diff_2k.jpg",
+          "size": 3590812,
+          "md5": "341c593c794bf18b0a49c542f6e381b7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete/brushed_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_rough_2k.jpg",
+          "size": 3219426,
+          "md5": "7d9994bceb82c437a753cedfba55c434",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/brushed_concrete/brushed_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete/brushed_concrete_nor_gl_2k.jpg",
+          "size": 3524683,
+          "md5": "ca0204e32c2f2afad5f4bbe8c6b436ed",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "dirty_concrete",
+      "name": "Dirty Concrete",
+      "download_category": "concrete",
+      "asset_categories": [
+        "concrete",
+        "outdoor",
+        "floor",
+        "man made",
+        "sand",
+        "dirty",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/dirty_concrete/dirty_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_concrete/dirty_concrete_diff_2k.jpg",
+          "size": 2952697,
+          "md5": "935b487b6c68388fdbb705f37682cb24",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/dirty_concrete/dirty_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_concrete/dirty_concrete_rough_2k.jpg",
+          "size": 1273849,
+          "md5": "dd3e9394c3d3b5dff0fb6ceb793241de",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/dirty_concrete/dirty_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_concrete/dirty_concrete_nor_gl_2k.jpg",
+          "size": 1507149,
+          "md5": "7ae7d791c6750752441ec50e8ec38189",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "cobblestone_04",
+      "name": "Cobblestone 04",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "cobblestone",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/cobblestone_04/cobblestone_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cobblestone_04/cobblestone_04_diff_2k.jpg",
+          "size": 3492388,
+          "md5": "b058bdc94fd0f8cfbb17543614255dc5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/cobblestone_04/cobblestone_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cobblestone_04/cobblestone_04_rough_2k.jpg",
+          "size": 1626850,
+          "md5": "fc1b781cc838aea9b95e87e616fc574c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/cobblestone_04/cobblestone_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cobblestone_04/cobblestone_04_nor_gl_2k.jpg",
+          "size": 3801239,
+          "md5": "c737f9246b422ca326ec2d20563224d6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "old_mosaic_floor",
+      "name": "Old Mosaic Floor",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/old_mosaic_floor/old_mosaic_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_mosaic_floor/old_mosaic_floor_diff_2k.jpg",
+          "size": 3481940,
+          "md5": "ebbcab3e98b336711d1b44a3611fdcf5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/old_mosaic_floor/old_mosaic_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_mosaic_floor/old_mosaic_floor_rough_2k.jpg",
+          "size": 2224543,
+          "md5": "95afc7390f94d780861c9be95b78542c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/old_mosaic_floor/old_mosaic_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_mosaic_floor/old_mosaic_floor_nor_gl_2k.jpg",
+          "size": 2547041,
+          "md5": "faa410e99a1cb2a4ae32918b454a90da",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "anti_slip_concrete",
+      "name": "Anti Slip Concrete",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/anti_slip_concrete/anti_slip_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/anti_slip_concrete/anti_slip_concrete_diff_2k.jpg",
+          "size": 4260182,
+          "md5": "94c3dac5985f1c8c93c4fc532593d148",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/anti_slip_concrete/anti_slip_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/anti_slip_concrete/anti_slip_concrete_rough_2k.jpg",
+          "size": 1194829,
+          "md5": "2840a2c5f4a6706d39505c91f35047da",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/anti_slip_concrete/anti_slip_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/anti_slip_concrete/anti_slip_concrete_nor_gl_2k.jpg",
+          "size": 4148847,
+          "md5": "94f78f9c2300bc7da38fbc0093edd56b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "grooved_concrete_driveway",
+      "name": "Grooved Concrete Driveway",
+      "download_category": "concrete",
+      "asset_categories": [
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/grooved_concrete_driveway/grooved_concrete_driveway_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grooved_concrete_driveway/grooved_concrete_driveway_diff_2k.jpg",
+          "size": 4554681,
+          "md5": "facbd6a730c692ddd5bdbeb251febde7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/grooved_concrete_driveway/grooved_concrete_driveway_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grooved_concrete_driveway/grooved_concrete_driveway_rough_2k.jpg",
+          "size": 2050367,
+          "md5": "0411289286be8ce3e281fe69999c97eb",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/grooved_concrete_driveway/grooved_concrete_driveway_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grooved_concrete_driveway/grooved_concrete_driveway_nor_gl_2k.jpg",
+          "size": 4813343,
+          "md5": "0a8f4ddc1fafef558ded1183976fd8c8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_slab_wall",
+      "name": "Concrete Slab Wall",
+      "download_category": "concrete",
+      "asset_categories": [
+        "wall",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_slab_wall/concrete_slab_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_slab_wall/concrete_slab_wall_diff_2k.jpg",
+          "size": 2419624,
+          "md5": "c7a28caa508136ab687028bd5322287c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_slab_wall/concrete_slab_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_slab_wall/concrete_slab_wall_rough_2k.jpg",
+          "size": 1269533,
+          "md5": "8c303d0ba72fd135ee3674d641ff00e9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_slab_wall/concrete_slab_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_slab_wall/concrete_slab_wall_nor_gl_2k.jpg",
+          "size": 3454211,
+          "md5": "02944efcef3b8e33c21ff61ab81d4a02",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wood_inlaid_concrete_wall",
+      "name": "Wood Inlaid Concrete Wall",
+      "download_category": "concrete",
+      "asset_categories": [
+        "wall",
+        "concrete",
+        "plaster-concrete",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_diff_2k.jpg",
+          "size": 2752405,
+          "md5": "612ca26f81a76c3dde99dcb514b7ec1a",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_rough_2k.jpg",
+          "size": 1522748,
+          "md5": "0e1fa5135835442292ea2702ebda8242",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_inlaid_concrete_wall/wood_inlaid_concrete_wall_nor_gl_2k.jpg",
+          "size": 4136180,
+          "md5": "86a8469950c23dfd02ea640445104482",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "interlocking_concrete_pavers",
+      "name": "Interlocking Concrete Pavers",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/interlocking_concrete_pavers/interlocking_concrete_pavers_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interlocking_concrete_pavers/interlocking_concrete_pavers_diff_2k.jpg",
+          "size": 2965184,
+          "md5": "ccaa67bc34364978a9aad8986ec366bd",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/interlocking_concrete_pavers/interlocking_concrete_pavers_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interlocking_concrete_pavers/interlocking_concrete_pavers_rough_2k.jpg",
+          "size": 1679950,
+          "md5": "b8a8b0100b6fb4e63cb09055150d7aa0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/interlocking_concrete_pavers/interlocking_concrete_pavers_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interlocking_concrete_pavers/interlocking_concrete_pavers_nor_gl_2k.jpg",
+          "size": 4321783,
+          "md5": "bac63e061caf139652822ac39d4048d7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "pebble_embedded_pavement",
+      "name": "Pebble Embedded Pavement",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "outdoor",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/pebble_embedded_pavement/pebble_embedded_pavement_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pebble_embedded_pavement/pebble_embedded_pavement_diff_2k.jpg",
+          "size": 3393809,
+          "md5": "214c30f1af10557ffcaf3fc12ac9ae73",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/pebble_embedded_pavement/pebble_embedded_pavement_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pebble_embedded_pavement/pebble_embedded_pavement_rough_2k.jpg",
+          "size": 2815698,
+          "md5": "66483c3e55885dd6d94e18ebc8de3bf7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/pebble_embedded_pavement/pebble_embedded_pavement_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pebble_embedded_pavement/pebble_embedded_pavement_nor_gl_2k.jpg",
+          "size": 4923058,
+          "md5": "3595a33ea06864ab359e7ebdb4b6824e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_wall_008",
+      "name": "Concrete Wall 008",
+      "download_category": "concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "wall",
+        "plaster-concrete",
+        "concrete",
+        "plaster"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_008/concrete_wall_008_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_diff_2k.jpg",
+          "size": 2666189,
+          "md5": "9e834dad5c07a3ba452a2ad0f1454c9f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_008/concrete_wall_008_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_rough_2k.jpg",
+          "size": 1458273,
+          "md5": "8b4997c293727d89322a7dbe30ae34ae",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_wall_008/concrete_wall_008_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_wall_008/concrete_wall_008_nor_gl_2k.jpg",
+          "size": 2342650,
+          "md5": "deca87f9fa074c7f041d23178f74ec95",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "cracked_concrete",
+      "name": "Cracked Concrete",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/cracked_concrete/cracked_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cracked_concrete/cracked_concrete_diff_2k.jpg",
+          "size": 3496468,
+          "md5": "aa2c554bf607fb64b033e39978eb1ab4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/cracked_concrete/cracked_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cracked_concrete/cracked_concrete_rough_2k.jpg",
+          "size": 2509728,
+          "md5": "bab67241159f9abc8d81547d4b64706f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/cracked_concrete/cracked_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/cracked_concrete/cracked_concrete_nor_gl_2k.jpg",
+          "size": 3359741,
+          "md5": "a8b322825c993ad7e5670b050ead7a35",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "painted_concrete",
+      "name": "Painted Concrete",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "indoor",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/painted_concrete/painted_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_concrete/painted_concrete_diff_2k.jpg",
+          "size": 4055196,
+          "md5": "3274f799337026bef29965dc3ac158c5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/painted_concrete/painted_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_concrete/painted_concrete_rough_2k.jpg",
+          "size": 1926276,
+          "md5": "61290f4d2dbc4f2b99c599ec0585baa0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/painted_concrete/painted_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/painted_concrete/painted_concrete_nor_gl_2k.jpg",
+          "size": 2786551,
+          "md5": "1fd68f0a87901ef3e4235bf24d32b210",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "gravel_concrete_03",
+      "name": "Gravel Concrete 03",
+      "download_category": "concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_03/gravel_concrete_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_03/gravel_concrete_03_diff_2k.jpg",
+          "size": 3495448,
+          "md5": "90d7adae08e3fd8083b65b2581545076",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_03/gravel_concrete_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_03/gravel_concrete_03_rough_2k.jpg",
+          "size": 1537093,
+          "md5": "da8f8ddf504ec54d529a1cb4f0df57bb",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/gravel_concrete_03/gravel_concrete_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete_03/gravel_concrete_03_nor_gl_2k.jpg",
+          "size": 3365934,
+          "md5": "a4f9f7830360c31893873dc4f5b18d65",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_floor",
+      "name": "Concrete Floor",
+      "download_category": "concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "floor",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/concrete/concrete_floor/concrete_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor/concrete_floor_diff_2k.jpg",
+          "size": 4169270,
+          "md5": "b31fcf4f48ca62a0c36ecd0e5b0d47de",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/concrete/concrete_floor/concrete_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor/concrete_floor_rough_2k.jpg",
+          "size": 2347865,
+          "md5": "410af2794fbdbcd8b4f0e41a653edc63",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/concrete/concrete_floor/concrete_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor/concrete_floor_nor_gl_2k.jpg",
+          "size": 4003915,
+          "md5": "ba454704131c331e9d05008a66a44001",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "worn_plaster_wall",
+      "name": "Worn Plaster Wall",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "wall",
+        "concrete",
+        "plaster-concrete",
+        "plaster"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_plaster_wall/worn_plaster_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_plaster_wall/worn_plaster_wall_diff_2k.jpg",
+          "size": 3096042,
+          "md5": "113c336124507f4b3fc7d440f6fd8346",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_plaster_wall/worn_plaster_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_plaster_wall/worn_plaster_wall_rough_2k.jpg",
+          "size": 1012956,
+          "md5": "221e1f80b2b21b7ee68636003a8edb1b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_plaster_wall/worn_plaster_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_plaster_wall/worn_plaster_wall_nor_gl_2k.jpg",
+          "size": 2935964,
+          "md5": "737e4eb8ec9af427c8aafe46675409d9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "preconcrete_wall_001",
+      "name": "Preconcrete Wall 001",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "concrete",
+        "wall",
+        "outdoor",
+        "man made",
+        "dirty",
+        "plaster",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/preconcrete_wall_001/preconcrete_wall_001_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_diff_2k.jpg",
+          "size": 921611,
+          "md5": "72135bdf140371e5953c3ee658a36589",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/preconcrete_wall_001/preconcrete_wall_001_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_rough_2k.jpg",
+          "size": 628369,
+          "md5": "ac044a27a8bddc38508f6bb90457ea1d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/preconcrete_wall_001/preconcrete_wall_001_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/preconcrete_wall_001/preconcrete_wall_001_nor_gl_2k.jpg",
+          "size": 875406,
+          "md5": "1565c05c2128f0ba1be4ac41b36f6bb0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rough_plasterbrick_05",
+      "name": "Rough Plasterbrick 05",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster-concrete",
+        "man made",
+        "wall",
+        "outdoor",
+        "floor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plasterbrick_05/rough_plasterbrick_05_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plasterbrick_05/rough_plasterbrick_05_diff_2k.jpg",
+          "size": 4164699,
+          "md5": "041f8b966e5c5448bf657af56f969301",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plasterbrick_05/rough_plasterbrick_05_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plasterbrick_05/rough_plasterbrick_05_rough_2k.jpg",
+          "size": 3290017,
+          "md5": "6eb50603a0de3bd9b2a0df1ad9719404",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plasterbrick_05/rough_plasterbrick_05_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plasterbrick_05/rough_plasterbrick_05_nor_gl_2k.jpg",
+          "size": 4014238,
+          "md5": "dbc1180a76f9d59aaf10158a6f01935a",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brushed_concrete_2",
+      "name": "Brushed Concrete 2",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "man made",
+        "dirty",
+        "concrete",
+        "floor",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_2/brushed_concrete_2_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_2/brushed_concrete_2_diff_2k.jpg",
+          "size": 3058351,
+          "md5": "66400316a37763f05adb1c2038fd4775",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_2/brushed_concrete_2_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_2/brushed_concrete_2_rough_2k.jpg",
+          "size": 2521164,
+          "md5": "4f76247abbb4ae955284a1bc537bcb94",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_2/brushed_concrete_2_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_2/brushed_concrete_2_nor_gl_2k.jpg",
+          "size": 3628754,
+          "md5": "2c2658c63e9f297afc98a9ab3b9321fd",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_pavement_03",
+      "name": "Concrete Pavement 03",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "concrete",
+        "outdoor",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_pavement_03/concrete_pavement_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_pavement_03/concrete_pavement_03_diff_2k.jpg",
+          "size": 3872063,
+          "md5": "7c9ada62d87b7cf410a432b146a142c3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_pavement_03/concrete_pavement_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_pavement_03/concrete_pavement_03_rough_2k.jpg",
+          "size": 1243806,
+          "md5": "821eb91041c6ab9e5a6d92dcdb579b39",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_pavement_03/concrete_pavement_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_pavement_03/concrete_pavement_03_nor_gl_2k.jpg",
+          "size": 4791871,
+          "md5": "75bf54955ee3fadd912846e9086442fa",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "gravel_concrete",
+      "name": "Gravel Concrete",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "floor",
+        "outdoor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/gravel_concrete/gravel_concrete_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete/gravel_concrete_diff_2k.jpg",
+          "size": 4413260,
+          "md5": "1bc44eb6d2410794fdb3d939972c2eec",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/gravel_concrete/gravel_concrete_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete/gravel_concrete_rough_2k.jpg",
+          "size": 2024336,
+          "md5": "fdaf528bf26eeceb59934f92d84592b4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/gravel_concrete/gravel_concrete_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/gravel_concrete/gravel_concrete_nor_gl_2k.jpg",
+          "size": 4883095,
+          "md5": "5f9a42ba9f8ecf8753141102383ac8e9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "smooth_concrete_floor",
+      "name": "Smooth Concrete Floor",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "floor",
+        "indoor",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/smooth_concrete_floor/smooth_concrete_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smooth_concrete_floor/smooth_concrete_floor_diff_2k.jpg",
+          "size": 3561275,
+          "md5": "3b9f88588c6fec0110f7e112163a8986",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/smooth_concrete_floor/smooth_concrete_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smooth_concrete_floor/smooth_concrete_floor_rough_2k.jpg",
+          "size": 2181493,
+          "md5": "de59a5a792ba784d4dbeb9cb2044ee2b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/smooth_concrete_floor/smooth_concrete_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/smooth_concrete_floor/smooth_concrete_floor_nor_gl_2k.jpg",
+          "size": 2819837,
+          "md5": "94895c9460504dc4e4a3275e9eb84aee",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "medieval_wall_01",
+      "name": "Medieval Wall 01",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster-concrete",
+        "wall",
+        "man made",
+        "outdoor",
+        "indoor",
+        "dirty"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/medieval_wall_01/medieval_wall_01_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_wall_01/medieval_wall_01_diff_2k.jpg",
+          "size": 2195783,
+          "md5": "a3b07276541bf7b53c58813300b55bc1",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/medieval_wall_01/medieval_wall_01_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_wall_01/medieval_wall_01_rough_2k.jpg",
+          "size": 781179,
+          "md5": "6178423d88ba8084606cfc72e891e897",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/medieval_wall_01/medieval_wall_01_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_wall_01/medieval_wall_01_nor_gl_2k.jpg",
+          "size": 2780004,
+          "md5": "51102394f80ffad76ccefcf11bdc4eaa",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "climbing_wall_02",
+      "name": "Climbing Wall 02",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "wall",
+        "man made",
+        "concrete",
+        "indoor",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/climbing_wall_02/climbing_wall_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/climbing_wall_02/climbing_wall_02_diff_2k.jpg",
+          "size": 2734074,
+          "md5": "d565f811f0f418ae0e52f05ac61a00d3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/climbing_wall_02/climbing_wall_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/climbing_wall_02/climbing_wall_02_rough_2k.jpg",
+          "size": 736308,
+          "md5": "34480df94848d4c52c83658dd6075e4f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/climbing_wall_02/climbing_wall_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/climbing_wall_02/climbing_wall_02_nor_gl_2k.jpg",
+          "size": 2760520,
+          "md5": "2accb71192d83ce46a355041dae2e2ff",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_tile_facade",
+      "name": "Concrete Tile Facade",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "wall",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_tile_facade/concrete_tile_facade_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tile_facade/concrete_tile_facade_diff_2k.jpg",
+          "size": 2720488,
+          "md5": "e9e4b8274d56c3ab2368ecf0a2e70bf8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_tile_facade/concrete_tile_facade_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tile_facade/concrete_tile_facade_rough_2k.jpg",
+          "size": 1691154,
+          "md5": "40ef6ba2bb5bd86f7e422885553b55b0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_tile_facade/concrete_tile_facade_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_tile_facade/concrete_tile_facade_nor_gl_2k.jpg",
+          "size": 3770128,
+          "md5": "f6267ee56dbd4e861b8c383eddeca380",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_rock_path",
+      "name": "Concrete Rock Path",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "dirty",
+        "floor",
+        "concrete",
+        "rock",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_rock_path/concrete_rock_path_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_rock_path/concrete_rock_path_diff_2k.jpg",
+          "size": 3026442,
+          "md5": "60d31fc5a6739d0550bd3245b5398baa",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_rock_path/concrete_rock_path_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_rock_path/concrete_rock_path_rough_2k.jpg",
+          "size": 1983135,
+          "md5": "259d1bd2132fa28a7ba7fc2a763101b8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_rock_path/concrete_rock_path_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_rock_path/concrete_rock_path_nor_gl_2k.jpg",
+          "size": 4457188,
+          "md5": "35403fefe47ff45e6c295196148ae223",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "plastered_wall_03",
+      "name": "Plastered Wall 03",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "wall",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/plastered_wall_03/plastered_wall_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plastered_wall_03/plastered_wall_03_diff_2k.jpg",
+          "size": 2351087,
+          "md5": "6a5e793104f98260474a86abd8d6b336",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/plastered_wall_03/plastered_wall_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plastered_wall_03/plastered_wall_03_rough_2k.jpg",
+          "size": 1323292,
+          "md5": "16cf46fab8c4201acd51fe1cbb707b04",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/plastered_wall_03/plastered_wall_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plastered_wall_03/plastered_wall_03_nor_gl_2k.jpg",
+          "size": 2351716,
+          "md5": "17004c3ae6e75703b0ac425260378476",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brushed_concrete_03",
+      "name": "Brushed Concrete 03",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "floor",
+        "plaster-concrete",
+        "concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_03/brushed_concrete_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_03/brushed_concrete_03_diff_2k.jpg",
+          "size": 3726708,
+          "md5": "47306c2e0ac2b2b15c40b18099533776",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_03/brushed_concrete_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_03/brushed_concrete_03_rough_2k.jpg",
+          "size": 2118195,
+          "md5": "cc88c12b1244a9be569e5863996ba3d6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/brushed_concrete_03/brushed_concrete_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brushed_concrete_03/brushed_concrete_03_nor_gl_2k.jpg",
+          "size": 4884411,
+          "md5": "a77e1091e6b2058c02ff68235454ff4e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rough_plaster_brick_04",
+      "name": "Rough Plaster Brick 04",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster-concrete",
+        "man made",
+        "wall",
+        "outdoor",
+        "dirty"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plaster_brick_04/rough_plaster_brick_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plaster_brick_04/rough_plaster_brick_04_diff_2k.jpg",
+          "size": 2816186,
+          "md5": "b4e85e484a08c7ad9446299b74f7741b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plaster_brick_04/rough_plaster_brick_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plaster_brick_04/rough_plaster_brick_04_rough_2k.jpg",
+          "size": 1540648,
+          "md5": "d980b54b2a996714b75f2923228398a8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/rough_plaster_brick_04/rough_plaster_brick_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_plaster_brick_04/rough_plaster_brick_04_nor_gl_2k.jpg",
+          "size": 3916821,
+          "md5": "d91fc6fe9c6adc40a14c58156ce5931d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "grey_plaster_03",
+      "name": "Grey Plaster 03",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster",
+        "outdoor",
+        "indoor",
+        "man made",
+        "dirty",
+        "wall",
+        "floor",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/grey_plaster_03/grey_plaster_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_plaster_03/grey_plaster_03_diff_2k.jpg",
+          "size": 2284426,
+          "md5": "480d2125eae0feb027ceddab7e314ac0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/grey_plaster_03/grey_plaster_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_plaster_03/grey_plaster_03_rough_2k.jpg",
+          "size": 1926962,
+          "md5": "8cbf4b0cd034e75635787e4720b4d073",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/grey_plaster_03/grey_plaster_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_plaster_03/grey_plaster_03_nor_gl_2k.jpg",
+          "size": 2572971,
+          "md5": "47b897d9fc5751823993f5d9e71e4732",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "white_plaster_02",
+      "name": "White Plaster 02",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster-concrete",
+        "wall",
+        "man made",
+        "outdoor",
+        "indoor",
+        "clean",
+        "floor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/white_plaster_02/white_plaster_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_plaster_02/white_plaster_02_diff_2k.jpg",
+          "size": 2568315,
+          "md5": "35f9c96c16aa0d934da7884b232f6d07",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/white_plaster_02/white_plaster_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_plaster_02/white_plaster_02_rough_2k.jpg",
+          "size": 1604444,
+          "md5": "47f989e9fd3e69e667244ff4b9f406f8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/white_plaster_02/white_plaster_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_plaster_02/white_plaster_02_nor_gl_2k.jpg",
+          "size": 3379814,
+          "md5": "a9fa643c4a200686ad89598b545b2adc",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "plaster_grey_04",
+      "name": "Plaster Grey 04",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "plaster-concrete",
+        "wall",
+        "man made",
+        "clean",
+        "outdoor",
+        "indoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/plaster_grey_04/plaster_grey_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_grey_04/plaster_grey_04_diff_2k.jpg",
+          "size": 1987693,
+          "md5": "0cd020dc1e3bb4511d76176a7e2487ec",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/plaster_grey_04/plaster_grey_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_grey_04/plaster_grey_04_rough_2k.jpg",
+          "size": 1616488,
+          "md5": "11caa54cca2926a8a1c87abf28dfc31a",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/plaster_grey_04/plaster_grey_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_grey_04/plaster_grey_04_nor_gl_2k.jpg",
+          "size": 3886433,
+          "md5": "462753965205d0a23f43eb971553b1bf",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "worn_mossy_plasterwall",
+      "name": "Worn Mossy Plasterwall",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "wall",
+        "outdoor",
+        "plaster",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_mossy_plasterwall/worn_mossy_plasterwall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_mossy_plasterwall/worn_mossy_plasterwall_diff_2k.jpg",
+          "size": 3987892,
+          "md5": "efce8e2f4012ed4afcffdcf9ee5f47db",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_mossy_plasterwall/worn_mossy_plasterwall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_mossy_plasterwall/worn_mossy_plasterwall_rough_2k.jpg",
+          "size": 2601005,
+          "md5": "db5a5fa30345e02c71c0da0152df3dcc",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/worn_mossy_plasterwall/worn_mossy_plasterwall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_mossy_plasterwall/worn_mossy_plasterwall_nor_gl_2k.jpg",
+          "size": 3874111,
+          "md5": "812cd2fd290d20c21cb7e7b48a2d8d4e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_floor_01",
+      "name": "Concrete Floor 01",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "concrete",
+        "clean",
+        "plaster-concrete",
+        "man made",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_floor_01/concrete_floor_01_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_01/concrete_floor_01_diff_2k.jpg",
+          "size": 2967720,
+          "md5": "bde1be20188bbec1d3970f37ee210ca1",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_floor_01/concrete_floor_01_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_01/concrete_floor_01_rough_2k.jpg",
+          "size": 1488360,
+          "md5": "3e7d67a2c5444140a30570e93eb23bd3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_floor_01/concrete_floor_01_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_floor_01/concrete_floor_01_nor_gl_2k.jpg",
+          "size": 3261423,
+          "md5": "ee04738b0919c3bd75ea77fc55e1e7d8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_block_wall_03",
+      "name": "Concrete Block Wall 03",
+      "download_category": "plaster-concrete",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "concrete",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_block_wall_03/concrete_block_wall_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall_03/concrete_block_wall_03_diff_2k.jpg",
+          "size": 3102316,
+          "md5": "20fc08be8e6bb028b8ae7a1b895bd6de",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_block_wall_03/concrete_block_wall_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall_03/concrete_block_wall_03_rough_2k.jpg",
+          "size": 950578,
+          "md5": "66ff94ec16a2c280fa12c6a2c62c018c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/plaster-concrete/concrete_block_wall_03/concrete_block_wall_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_block_wall_03/concrete_block_wall_03_nor_gl_2k.jpg",
+          "size": 3364343,
+          "md5": "3194589accda129c698bed0fa807577d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "plank_flooring_03",
+      "name": "Plank Flooring 03",
+      "download_category": "wood",
+      "asset_categories": [
+        "floor",
+        "wood",
+        "raw wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_03/plank_flooring_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_03/plank_flooring_03_diff_2k.jpg",
+          "size": 3382173,
+          "md5": "dbcb51a985684faafec26db0d23b62b9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_03/plank_flooring_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_03/plank_flooring_03_rough_2k.jpg",
+          "size": 1844250,
+          "md5": "53f40de0eff8173b19b1287517bd399e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_03/plank_flooring_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_03/plank_flooring_03_nor_gl_2k.jpg",
+          "size": 4002042,
+          "md5": "4dbd427437fbb9ff2a0832979d4700e3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rough_pine_door",
+      "name": "Rough Pine Door",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/rough_pine_door/rough_pine_door_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_pine_door/rough_pine_door_diff_2k.jpg",
+          "size": 2941214,
+          "md5": "2b7cd5662ba309769c5acaad87bacc23",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/rough_pine_door/rough_pine_door_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_pine_door/rough_pine_door_rough_2k.jpg",
+          "size": 916689,
+          "md5": "f40371961ec43c91efcf69ca2b5bf905",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/rough_pine_door/rough_pine_door_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_pine_door/rough_pine_door_nor_gl_2k.jpg",
+          "size": 3201598,
+          "md5": "0299cf175f40dcf8d12f7dad73760e09",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "black_painted_planks",
+      "name": "Black Painted Planks",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/black_painted_planks/black_painted_planks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/black_painted_planks/black_painted_planks_diff_2k.jpg",
+          "size": 2463246,
+          "md5": "7c671ba220ca4eb582c5f10811c7fac5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/black_painted_planks/black_painted_planks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/black_painted_planks/black_painted_planks_rough_2k.jpg",
+          "size": 1427818,
+          "md5": "ded0f753289b29e4bb9b7847b0242fb8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/black_painted_planks/black_painted_planks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/black_painted_planks/black_painted_planks_nor_gl_2k.jpg",
+          "size": 3130670,
+          "md5": "9cf8b6d388db8d92ab65b05280d7f422",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brown_planks_09",
+      "name": "Brown Planks 09",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "outdoor",
+        "indoor",
+        "clean",
+        "wall",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/brown_planks_09/brown_planks_09_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_09/brown_planks_09_diff_2k.jpg",
+          "size": 3025962,
+          "md5": "fbd3393448fb863b494ac4782b3356ca",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/brown_planks_09/brown_planks_09_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_09/brown_planks_09_rough_2k.jpg",
+          "size": 1083890,
+          "md5": "891df81648423a081e0afaec3d515b42",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/brown_planks_09/brown_planks_09_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_09/brown_planks_09_nor_gl_2k.jpg",
+          "size": 2928172,
+          "md5": "95d41762bda572165493c583c33cc56a",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "bark_brown_01",
+      "name": "Bark Brown 01",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "outdoor",
+        "natural",
+        "bark"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/bark_brown_01/bark_brown_01_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/bark_brown_01/bark_brown_01_diff_2k.jpg",
+          "size": 2667267,
+          "md5": "844daf37120a327bb77ac907102d69c0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/bark_brown_01/bark_brown_01_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/bark_brown_01/bark_brown_01_rough_2k.jpg",
+          "size": 812553,
+          "md5": "e62a2a90bd2f78f72a7f7b427b048c37",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/bark_brown_01/bark_brown_01_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/bark_brown_01/bark_brown_01_nor_gl_2k.jpg",
+          "size": 4621865,
+          "md5": "60e17a42cf4682ef77891ed92cada3cf",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brown_planks_07",
+      "name": "Brown Planks 07",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "outdoor",
+        "indoor",
+        "clean",
+        "wall",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/brown_planks_07/brown_planks_07_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_07/brown_planks_07_diff_2k.jpg",
+          "size": 1785085,
+          "md5": "a60f13d0ab893db98285891ac8dd39a6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/brown_planks_07/brown_planks_07_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_07/brown_planks_07_rough_2k.jpg",
+          "size": 306671,
+          "md5": "9a7d9cbaed4ca9c8e833ef8eff84d277",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/brown_planks_07/brown_planks_07_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_07/brown_planks_07_nor_gl_2k.jpg",
+          "size": 2141354,
+          "md5": "e05e14aa473b77e06056acbb75bf5d95",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "plank_flooring_04",
+      "name": "Plank Flooring 04",
+      "download_category": "wood",
+      "asset_categories": [
+        "floor",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_04/plank_flooring_04_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_04/plank_flooring_04_diff_2k.jpg",
+          "size": 2423973,
+          "md5": "11d44a0732d764ff533f6bf24b6b933c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_04/plank_flooring_04_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_04/plank_flooring_04_rough_2k.jpg",
+          "size": 2897520,
+          "md5": "cc1d450bd25039b6294890549ddb64c2",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/plank_flooring_04/plank_flooring_04_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plank_flooring_04/plank_flooring_04_nor_gl_2k.jpg",
+          "size": 721336,
+          "md5": "b03eb36efcb871ee7f2cb8890d50c268",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wood_floor_worn",
+      "name": "Wood Floor Worn",
+      "download_category": "wood",
+      "asset_categories": [
+        "floor",
+        "wood",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/wood_floor_worn/wood_floor_worn_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_floor_worn/wood_floor_worn_diff_2k.jpg",
+          "size": 2531019,
+          "md5": "980427517934e2e6441da8915b0b2283",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/wood_floor_worn/wood_floor_worn_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_floor_worn/wood_floor_worn_rough_2k.jpg",
+          "size": 1316403,
+          "md5": "089661983973885fd8df6dca05953ff4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/wood_floor_worn/wood_floor_worn_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_floor_worn/wood_floor_worn_nor_gl_2k.jpg",
+          "size": 2894278,
+          "md5": "e45c1601f170ea0eb4cd9bb10240899f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brown_planks_05",
+      "name": "Brown Planks 05",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "outdoor",
+        "indoor",
+        "clean",
+        "wall",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/brown_planks_05/brown_planks_05_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_05/brown_planks_05_diff_2k.jpg",
+          "size": 1286160,
+          "md5": "b08d56fd6d43e482405f2b8c09d4b531",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/brown_planks_05/brown_planks_05_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_05/brown_planks_05_rough_2k.jpg",
+          "size": 382455,
+          "md5": "a516dc7eb74d24ca872e7f0f6a844565",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/brown_planks_05/brown_planks_05_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_planks_05/brown_planks_05_nor_gl_2k.jpg",
+          "size": 2849343,
+          "md5": "c9670fe441928f8ee2260afe82034d7e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "planks_brown_10",
+      "name": "Planks Brown 10",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "wall",
+        "man made",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/planks_brown_10/planks_brown_10_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/planks_brown_10/planks_brown_10_diff_2k.jpg",
+          "size": 2169477,
+          "md5": "9d5555f17c83ce918e2d520c103a382d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/planks_brown_10/planks_brown_10_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/planks_brown_10/planks_brown_10_rough_2k.jpg",
+          "size": 1550822,
+          "md5": "feede054e6588bc6c6c18fb8496becbc",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/planks_brown_10/planks_brown_10_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/planks_brown_10/planks_brown_10_nor_gl_2k.jpg",
+          "size": 430325,
+          "md5": "8453bce3828097249472dff77e620127",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wood_planks",
+      "name": "Wood Planks",
+      "download_category": "wood",
+      "asset_categories": [
+        "floor",
+        "wood",
+        "raw wood",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/wood_planks/wood_planks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_diff_2k.jpg",
+          "size": 2387732,
+          "md5": "29f2d08d585433fb54034a0e8fa79adc",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/wood_planks/wood_planks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_rough_2k.jpg",
+          "size": 1151798,
+          "md5": "461754cb0181e562be384e2acc2fc8d2",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/wood_planks/wood_planks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_planks/wood_planks_nor_gl_2k.jpg",
+          "size": 2906326,
+          "md5": "61c0a752deaa8fda789a31e4fc1427d8",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "moss_wood",
+      "name": "Moss Wood",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "wall",
+        "floor",
+        "man made",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/moss_wood/moss_wood_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moss_wood/moss_wood_diff_2k.jpg",
+          "size": 3609431,
+          "md5": "1346872073558c36b66ae4201f42ef30",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/moss_wood/moss_wood_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moss_wood/moss_wood_rough_2k.jpg",
+          "size": 1402105,
+          "md5": "46cf862c7a0f85686ad0c098180cb354",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/moss_wood/moss_wood_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/moss_wood/moss_wood_nor_gl_2k.jpg",
+          "size": 3545000,
+          "md5": "4f5dfac68e09f971ba8950d8fa0836be",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "weathered_brown_planks",
+      "name": "Weathered Brown Planks",
+      "download_category": "wood",
+      "asset_categories": [
+        "man made",
+        "wood",
+        "dirty",
+        "wall",
+        "outdoor",
+        "floor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/weathered_brown_planks/weathered_brown_planks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_brown_planks/weathered_brown_planks_diff_2k.jpg",
+          "size": 911358,
+          "md5": "31317a56abbee4fbf7018d9f41180827",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/weathered_brown_planks/weathered_brown_planks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_brown_planks/weathered_brown_planks_rough_2k.jpg",
+          "size": 944154,
+          "md5": "4dd58553f1d0f76bf883b71aa9fc89ea",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/weathered_brown_planks/weathered_brown_planks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_brown_planks/weathered_brown_planks_nor_gl_2k.jpg",
+          "size": 1029733,
+          "md5": "d6720855901b27dbdd209942f327b795",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wooden_garage_door",
+      "name": "Wooden Garage Door",
+      "download_category": "wood",
+      "asset_categories": [
+        "man made",
+        "outdoor",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/wooden_garage_door/wooden_garage_door_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_garage_door/wooden_garage_door_diff_2k.jpg",
+          "size": 2692218,
+          "md5": "da613ceb590e830e778930e161592f03",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/wooden_garage_door/wooden_garage_door_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_garage_door/wooden_garage_door_rough_2k.jpg",
+          "size": 1722456,
+          "md5": "cadb6d70be0b5cfc007116fcdd8562d9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/wooden_garage_door/wooden_garage_door_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_garage_door/wooden_garage_door_nor_gl_2k.jpg",
+          "size": 2972947,
+          "md5": "33960ce49b45c0318ff42088581441f5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wood_shutter",
+      "name": "Wood Shutter",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "raw wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/wood_shutter/wood_shutter_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_shutter/wood_shutter_diff_2k.jpg",
+          "size": 2875361,
+          "md5": "0e64f59b1a38145f6abbccc746c85348",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/wood_shutter/wood_shutter_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_shutter/wood_shutter_rough_2k.jpg",
+          "size": 1026702,
+          "md5": "a06b2b5b91e5441c9cde96f8c75fdd68",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/wood_shutter/wood_shutter_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wood_shutter/wood_shutter_nor_gl_2k.jpg",
+          "size": 3089595,
+          "md5": "b5e2ebf5e4cb793b765296424a4496f6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "wooden_rough_planks",
+      "name": "Wooden Rough Planks",
+      "download_category": "wood",
+      "asset_categories": [
+        "wood",
+        "wall",
+        "man made",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/wooden_rough_planks/wooden_rough_planks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_rough_planks/wooden_rough_planks_diff_2k.jpg",
+          "size": 2803506,
+          "md5": "10bbd0b1e07bfdb7bc23e97159f9565b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/wooden_rough_planks/wooden_rough_planks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_rough_planks/wooden_rough_planks_rough_2k.jpg",
+          "size": 1055489,
+          "md5": "11c8a4d3e6f2a51875750dcb973444f2",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/wooden_rough_planks/wooden_rough_planks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/wooden_rough_planks/wooden_rough_planks_nor_gl_2k.jpg",
+          "size": 1287377,
+          "md5": "6eecb930bde18125a73892f8c80c6cc0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "laminate_floor_03",
+      "name": "Laminate Floor 03",
+      "download_category": "wood",
+      "asset_categories": [
+        "man made",
+        "floor",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/laminate_floor_03/laminate_floor_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/laminate_floor_03/laminate_floor_03_diff_2k.jpg",
+          "size": 2986237,
+          "md5": "aa6428593f456e266a681f4348edafa3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/laminate_floor_03/laminate_floor_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/laminate_floor_03/laminate_floor_03_rough_2k.jpg",
+          "size": 1560128,
+          "md5": "6d1ecbe207f5ed7eb0229895729a2bbf",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/laminate_floor_03/laminate_floor_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/laminate_floor_03/laminate_floor_03_nor_gl_2k.jpg",
+          "size": 2092418,
+          "md5": "fac726f8e00e3932d1fbe1ef720abc30",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "japanese_hackberry_bark",
+      "name": "Japanese Hackberry Bark",
+      "download_category": "wood",
+      "asset_categories": [
+        "outdoor",
+        "bark",
+        "natural",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/japanese_hackberry_bark/japanese_hackberry_bark_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/japanese_hackberry_bark/japanese_hackberry_bark_diff_2k.jpg",
+          "size": 4735539,
+          "md5": "d913ed01faea2f776d46d49e041db940",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/japanese_hackberry_bark/japanese_hackberry_bark_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/japanese_hackberry_bark/japanese_hackberry_bark_rough_2k.jpg",
+          "size": 1963198,
+          "md5": "ffb7651ccb8d5b16a3f71ce30466cf42",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/japanese_hackberry_bark/japanese_hackberry_bark_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/japanese_hackberry_bark/japanese_hackberry_bark_nor_gl_2k.jpg",
+          "size": 5172589,
+          "md5": "b3e48bc69fae37a4cca41b04cb6d7182",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "old_wood_floor",
+      "name": "Old Wood Floor",
+      "download_category": "wood",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "floor",
+        "wood",
+        "dirty"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/old_wood_floor/old_wood_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_wood_floor/old_wood_floor_diff_2k.jpg",
+          "size": 3116403,
+          "md5": "b26ae70ec77367f421a5e0b3388b3e05",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/old_wood_floor/old_wood_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_wood_floor/old_wood_floor_rough_2k.jpg",
+          "size": 2370202,
+          "md5": "afd7ec48a5bb248d87f39b2993d88cac",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/old_wood_floor/old_wood_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/old_wood_floor/old_wood_floor_nor_gl_2k.jpg",
+          "size": 2927156,
+          "md5": "9e055d8c7b568269d18ab9433b0d25d7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "herringbone_parquet",
+      "name": "Herringbone Parquet",
+      "download_category": "wood",
+      "asset_categories": [
+        "man made",
+        "floor",
+        "wood"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/wood/herringbone_parquet/herringbone_parquet_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_parquet/herringbone_parquet_diff_2k.jpg",
+          "size": 3482793,
+          "md5": "db8d7a22c17c38b62e536839f52ba037",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/wood/herringbone_parquet/herringbone_parquet_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_parquet/herringbone_parquet_rough_2k.jpg",
+          "size": 2285252,
+          "md5": "0662da93037a89dc2341dfa66602ce31",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/wood/herringbone_parquet/herringbone_parquet_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_parquet/herringbone_parquet_nor_gl_2k.jpg",
+          "size": 1854683,
+          "md5": "644ab77a483d74d0d1e8db9f9650566d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "granite_tile_03",
+      "name": "Granite Tile 03",
+      "download_category": "tiles",
+      "asset_categories": [
+        "wall",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/granite_tile_03/granite_tile_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/granite_tile_03/granite_tile_03_diff_2k.jpg",
+          "size": 4086873,
+          "md5": "2152bc995a6567c2a223490de2964c61",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/granite_tile_03/granite_tile_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/granite_tile_03/granite_tile_03_rough_2k.jpg",
+          "size": 1572000,
+          "md5": "ce9db38d1b730cffae8ffb49c023380d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/granite_tile_03/granite_tile_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/granite_tile_03/granite_tile_03_nor_gl_2k.jpg",
+          "size": 3183841,
+          "md5": "87b9e70a34011dc112031aeba850c94b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "grey_cartago_03",
+      "name": "Grey Cartago 03",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_03/grey_cartago_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_03/grey_cartago_03_diff_2k.jpg",
+          "size": 2478130,
+          "md5": "104dfd7b40dcf04a89977f1bcd1dc1b3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_03/grey_cartago_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_03/grey_cartago_03_rough_2k.jpg",
+          "size": 1213940,
+          "md5": "e67336b950547c39b9193c351d24044a",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_03/grey_cartago_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_03/grey_cartago_03_nor_gl_2k.jpg",
+          "size": 2235611,
+          "md5": "0e2393c0646936a10f1ad02a37f7e499",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "worn_tile_floor",
+      "name": "Worn Tile Floor",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/worn_tile_floor/worn_tile_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_tile_floor/worn_tile_floor_diff_2k.jpg",
+          "size": 3325063,
+          "md5": "ca9b855f7a59fd3c16ac572262fb197e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/worn_tile_floor/worn_tile_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_tile_floor/worn_tile_floor_rough_2k.jpg",
+          "size": 2904794,
+          "md5": "bcc4837c97b340d85a5a4300bb56ec21",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/worn_tile_floor/worn_tile_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_tile_floor/worn_tile_floor_nor_gl_2k.jpg",
+          "size": 2668016,
+          "md5": "40bb017d08d3c13bfbcf7949f36d9c7d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "stone_embedded_tiles",
+      "name": "Stone Embedded Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/stone_embedded_tiles/stone_embedded_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stone_embedded_tiles/stone_embedded_tiles_diff_2k.jpg",
+          "size": 4984210,
+          "md5": "f48d0ea690f8cc5fda8d7c3b58e21181",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/stone_embedded_tiles/stone_embedded_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stone_embedded_tiles/stone_embedded_tiles_rough_2k.jpg",
+          "size": 2222543,
+          "md5": "31e6d7f1b13a3794b6b67f1973cd1aa6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/stone_embedded_tiles/stone_embedded_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/stone_embedded_tiles/stone_embedded_tiles_nor_gl_2k.jpg",
+          "size": 3304322,
+          "md5": "d1d8aa6ddfe2371f196f0935535015cb",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "interior_tiles",
+      "name": "Interior Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/interior_tiles/interior_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_diff_2k.jpg",
+          "size": 2879908,
+          "md5": "c33733a2bd26c440a0f0df5306ea8914",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/interior_tiles/interior_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_rough_2k.jpg",
+          "size": 2272667,
+          "md5": "1bb3d68d59c0fed7a33d7a97973e289d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/interior_tiles/interior_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/interior_tiles/interior_tiles_nor_gl_2k.jpg",
+          "size": 1924372,
+          "md5": "2adbc51954ae3ffb271c06456282c8c9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "terrazzo_tiles",
+      "name": "Terrazzo Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/terrazzo_tiles/terrazzo_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_diff_2k.jpg",
+          "size": 4554044,
+          "md5": "b4bfb01525c22e611d9a0651f372ae91",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/terrazzo_tiles/terrazzo_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_rough_2k.jpg",
+          "size": 1841962,
+          "md5": "f75be6541a4fa5c8197408224946efb3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/terrazzo_tiles/terrazzo_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terrazzo_tiles/terrazzo_tiles_nor_gl_2k.jpg",
+          "size": 509402,
+          "md5": "6fdd6cc116b9018108b91f3d5ddf1cff",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "checkered_pavement_tiles",
+      "name": "Checkered Pavement Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/checkered_pavement_tiles/checkered_pavement_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/checkered_pavement_tiles/checkered_pavement_tiles_diff_2k.jpg",
+          "size": 2818669,
+          "md5": "a5d82a5ee27ce86b3376b067f51767db",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/checkered_pavement_tiles/checkered_pavement_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/checkered_pavement_tiles/checkered_pavement_tiles_rough_2k.jpg",
+          "size": 2292082,
+          "md5": "cbc6bc8e95b3f2d799bf3e98c70431a9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/checkered_pavement_tiles/checkered_pavement_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/checkered_pavement_tiles/checkered_pavement_tiles_nor_gl_2k.jpg",
+          "size": 1774371,
+          "md5": "a3d4c370a4801f73dbd58f8b07e16e05",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "grey_cartago_01",
+      "name": "Grey Cartago 01",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_01/grey_cartago_01_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_01/grey_cartago_01_diff_2k.jpg",
+          "size": 3074752,
+          "md5": "90495c6bd341a4fc6f4479cc8bcd5198",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_01/grey_cartago_01_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_01/grey_cartago_01_rough_2k.jpg",
+          "size": 1853263,
+          "md5": "efb2d26facdff0cbcfd6a8f95677769c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/grey_cartago_01/grey_cartago_01_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/grey_cartago_01/grey_cartago_01_nor_gl_2k.jpg",
+          "size": 698964,
+          "md5": "35e3f6539fcb16392f43152df5c99d71",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brown_floor_tiles",
+      "name": "Brown Floor Tilles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "tiles",
+        "floor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/brown_floor_tiles/brown_floor_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_floor_tiles/brown_floor_tiles_diff_2k.jpg",
+          "size": 3584512,
+          "md5": "a9f0398f4b8d1b79eb57b9e957012930",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/brown_floor_tiles/brown_floor_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_floor_tiles/brown_floor_tiles_rough_2k.jpg",
+          "size": 2841084,
+          "md5": "c61456a35b49515e9cafb7e77b4eb4e6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/brown_floor_tiles/brown_floor_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brown_floor_tiles/brown_floor_tiles_nor_gl_2k.jpg",
+          "size": 1410617,
+          "md5": "c06470665b2f7617e9bdf42eaff70b7f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rectangular_facade_tiles",
+      "name": "Rectangular Facade Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "wall",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles/rectangular_facade_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles/rectangular_facade_tiles_diff_2k.jpg",
+          "size": 2288265,
+          "md5": "9f920e3d0e33856fb1c780821e18c7da",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles/rectangular_facade_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles/rectangular_facade_tiles_rough_2k.jpg",
+          "size": 917441,
+          "md5": "2c09c921939b5b6dd72a8e339e83df2f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles/rectangular_facade_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles/rectangular_facade_tiles_nor_gl_2k.jpg",
+          "size": 3584640,
+          "md5": "c2597b6e3d76a72e1f3684fdc932a094",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "dirty_tiles",
+      "name": "Dirty Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "floor",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/dirty_tiles/dirty_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_tiles/dirty_tiles_diff_2k.jpg",
+          "size": 2480535,
+          "md5": "661eba52e68b06e2d473fb87aea74403",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/dirty_tiles/dirty_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_tiles/dirty_tiles_rough_2k.jpg",
+          "size": 2291811,
+          "md5": "68c7f382123585187a0a1e30b1311731",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/dirty_tiles/dirty_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/dirty_tiles/dirty_tiles_nor_gl_2k.jpg",
+          "size": 2687646,
+          "md5": "45e57037f3edd8b0cb6cb287ddef5553",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rectangular_facade_tiles_02",
+      "name": "Rectangular Facade Tiles 02",
+      "download_category": "tiles",
+      "asset_categories": [
+        "wall",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles_02/rectangular_facade_tiles_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles_02/rectangular_facade_tiles_02_diff_2k.jpg",
+          "size": 2818495,
+          "md5": "c5423a610642d98ec91ab7b61b7ffcbe",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles_02/rectangular_facade_tiles_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles_02/rectangular_facade_tiles_02_rough_2k.jpg",
+          "size": 3346806,
+          "md5": "6853b8044ae6bb03845afe0cb8e1fe2d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/rectangular_facade_tiles_02/rectangular_facade_tiles_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rectangular_facade_tiles_02/rectangular_facade_tiles_02_nor_gl_2k.jpg",
+          "size": 3144171,
+          "md5": "c589640e7b9d8064162c144652493bcb",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "terracotta_floor_tiles",
+      "name": "Terracotta Floor Tiles",
+      "download_category": "tiles",
+      "asset_categories": [
+        "man made",
+        "indoor",
+        "tiles"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/tiles/terracotta_floor_tiles/terracotta_floor_tiles_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terracotta_floor_tiles/terracotta_floor_tiles_diff_2k.jpg",
+          "size": 2731407,
+          "md5": "f8e12e8397b85124ceee7f8bb406b7e7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/tiles/terracotta_floor_tiles/terracotta_floor_tiles_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terracotta_floor_tiles/terracotta_floor_tiles_rough_2k.jpg",
+          "size": 2607419,
+          "md5": "5f49c8dfbe61ebb842cbdfc8fe999b5f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/tiles/terracotta_floor_tiles/terracotta_floor_tiles_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/terracotta_floor_tiles/terracotta_floor_tiles_nor_gl_2k.jpg",
+          "size": 2676771,
+          "md5": "b681896ebe4a4aa297304aa43aeea078",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "patterned_brick_wall_02",
+      "name": "Patterned Brick Wall 02",
+      "download_category": "brick",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "wall",
+        "brick",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/patterned_brick_wall_02/patterned_brick_wall_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/patterned_brick_wall_02/patterned_brick_wall_02_diff_2k.jpg",
+          "size": 2549998,
+          "md5": "7747065bff0ae7832d61e506afd16c0f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/patterned_brick_wall_02/patterned_brick_wall_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/patterned_brick_wall_02/patterned_brick_wall_02_rough_2k.jpg",
+          "size": 1271085,
+          "md5": "36b021fb3bc491298d26b43ca50edd70",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/patterned_brick_wall_02/patterned_brick_wall_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/patterned_brick_wall_02/patterned_brick_wall_02_nor_gl_2k.jpg",
+          "size": 3570787,
+          "md5": "344d48224df70f575d0435f973aa3395",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "plaster_brick_pattern",
+      "name": "Plaster Brick Pattern",
+      "download_category": "brick",
+      "asset_categories": [
+        "wall",
+        "man made",
+        "plaster",
+        "brick",
+        "plaster-concrete"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/plaster_brick_pattern/plaster_brick_pattern_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_brick_pattern/plaster_brick_pattern_diff_2k.jpg",
+          "size": 2308327,
+          "md5": "5248c9c6efdeff2551441e084f333737",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/plaster_brick_pattern/plaster_brick_pattern_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_brick_pattern/plaster_brick_pattern_rough_2k.jpg",
+          "size": 1433301,
+          "md5": "064c4d340467b63e6feb49a164564fde",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/plaster_brick_pattern/plaster_brick_pattern_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/plaster_brick_pattern/plaster_brick_pattern_nor_gl_2k.jpg",
+          "size": 4191606,
+          "md5": "c677440b80911cbda2ef844e1b45f137",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brick_wall_12",
+      "name": "Brick Wall 12",
+      "download_category": "brick",
+      "asset_categories": [
+        "wall",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/brick_wall_12/brick_wall_12_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_wall_12/brick_wall_12_diff_2k.jpg",
+          "size": 3731409,
+          "md5": "873f8a561b1248cae9931d83f204d7d6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/brick_wall_12/brick_wall_12_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_wall_12/brick_wall_12_rough_2k.jpg",
+          "size": 1041920,
+          "md5": "353469fc8a6eec0dcf1dc1b5a9b57dac",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/brick_wall_12/brick_wall_12_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_wall_12/brick_wall_12_nor_gl_2k.jpg",
+          "size": 4252038,
+          "md5": "687238e76b9b90f943ce9464c330a66f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "brick_pavement_03",
+      "name": "Brick Pavement 03",
+      "download_category": "brick",
+      "asset_categories": [
+        "floor",
+        "brick",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/brick_pavement_03/brick_pavement_03_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_pavement_03/brick_pavement_03_diff_2k.jpg",
+          "size": 3170744,
+          "md5": "2e845c17100d6398cd30655123542400",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/brick_pavement_03/brick_pavement_03_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_pavement_03/brick_pavement_03_rough_2k.jpg",
+          "size": 785098,
+          "md5": "fab40d4cbf983c5556f7b17cc29b0d3c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/brick_pavement_03/brick_pavement_03_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/brick_pavement_03/brick_pavement_03_nor_gl_2k.jpg",
+          "size": 4076283,
+          "md5": "b6fc4de5b1e5520c3a9e4a994d34567e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "castle_brick_01",
+      "name": "Castle Brick 01",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick",
+        "outdoor",
+        "man made",
+        "wall",
+        "dirty"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/castle_brick_01/castle_brick_01_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_01/castle_brick_01_diff_2k.jpg",
+          "size": 2679995,
+          "md5": "c6cdd16e81726506d743f5c5378f5338",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/castle_brick_01/castle_brick_01_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_01/castle_brick_01_rough_2k.jpg",
+          "size": 1036467,
+          "md5": "611d69d62b9d980fcda63414d0697d11",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/castle_brick_01/castle_brick_01_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_01/castle_brick_01_nor_gl_2k.jpg",
+          "size": 4096428,
+          "md5": "b4fabab8fdf157eb29fc0859b60fc063",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "red_bricks_02",
+      "name": "Red Bricks 02",
+      "download_category": "brick",
+      "asset_categories": [
+        "outdoor",
+        "wall",
+        "dirty",
+        "man made",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/red_bricks_02/red_bricks_02_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_bricks_02/red_bricks_02_diff_2k.jpg",
+          "size": 2416564,
+          "md5": "68460587298b7b73469a4efc7026d39e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/red_bricks_02/red_bricks_02_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_bricks_02/red_bricks_02_rough_2k.jpg",
+          "size": 516837,
+          "md5": "863804c452b042fe8ad253a91023abb3",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/red_bricks_02/red_bricks_02_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/red_bricks_02/red_bricks_02_nor_gl_2k.jpg",
+          "size": 3546615,
+          "md5": "4056c8cff7b2650ea25b8b4ce951933d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "worn_brick_wall",
+      "name": "Worn Brick Wall",
+      "download_category": "brick",
+      "asset_categories": [
+        "wall",
+        "man made",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/worn_brick_wall/worn_brick_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_brick_wall/worn_brick_wall_diff_2k.jpg",
+          "size": 3758830,
+          "md5": "c05ef387c96392429e21a797b7d68e0e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/worn_brick_wall/worn_brick_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_brick_wall/worn_brick_wall_rough_2k.jpg",
+          "size": 2052365,
+          "md5": "e6cf81ada194b2f9ee52092f4e66fe6d",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/worn_brick_wall/worn_brick_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/worn_brick_wall/worn_brick_wall_nor_gl_2k.jpg",
+          "size": 4313870,
+          "md5": "ea7f8be52685a37348f498e10fb4c73b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "square_brick_floor",
+      "name": "Square Brick Floor",
+      "download_category": "brick",
+      "asset_categories": [
+        "indoor",
+        "brick",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/square_brick_floor/square_brick_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/square_brick_floor/square_brick_floor_diff_2k.jpg",
+          "size": 3538350,
+          "md5": "6ef06e43d1d3869814cf9bf90dc1c31f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/square_brick_floor/square_brick_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/square_brick_floor/square_brick_floor_rough_2k.jpg",
+          "size": 2599988,
+          "md5": "8a77aa9ae5d41add11ca0b600ddd46ce",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/square_brick_floor/square_brick_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/square_brick_floor/square_brick_floor_nor_gl_2k.jpg",
+          "size": 2777234,
+          "md5": "9c9294d1b47aafdb1a9368bebec13ca6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "mossy_brick_floor",
+      "name": "Mossy Brick Floor",
+      "download_category": "brick",
+      "asset_categories": [
+        "floor",
+        "brick",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/mossy_brick_floor/mossy_brick_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick_floor/mossy_brick_floor_diff_2k.jpg",
+          "size": 3783271,
+          "md5": "cb32a102c02509d098b0fd490a507834",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/mossy_brick_floor/mossy_brick_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick_floor/mossy_brick_floor_rough_2k.jpg",
+          "size": 2527902,
+          "md5": "7d0b53d8770285e70f64e4cafa64fab5",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/mossy_brick_floor/mossy_brick_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick_floor/mossy_brick_floor_nor_gl_2k.jpg",
+          "size": 4002753,
+          "md5": "b5e6a7195ebab7d192c028b4c10e0c8c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "rough_block_wall",
+      "name": "Rough Block Wall",
+      "download_category": "brick",
+      "asset_categories": [
+        "man made",
+        "outdoor",
+        "brick",
+        "wall"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/rough_block_wall/rough_block_wall_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_block_wall/rough_block_wall_diff_2k.jpg",
+          "size": 2148887,
+          "md5": "6347b7a3ed4853c609c87ddbbdc1d20c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/rough_block_wall/rough_block_wall_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_block_wall/rough_block_wall_rough_2k.jpg",
+          "size": 1040509,
+          "md5": "d72ba325d60a821afde2c716f0e2cbcb",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/rough_block_wall/rough_block_wall_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rough_block_wall/rough_block_wall_nor_gl_2k.jpg",
+          "size": 3390106,
+          "md5": "aff0b13ade92e39c8af28b2028a745f4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "short_bricks_floor",
+      "name": "Short Bricks Floor",
+      "download_category": "brick",
+      "asset_categories": [
+        "man made",
+        "outdoor",
+        "floor",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/short_bricks_floor/short_bricks_floor_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/short_bricks_floor/short_bricks_floor_diff_2k.jpg",
+          "size": 3840391,
+          "md5": "747973868cf7597c005f6c8331295e44",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/short_bricks_floor/short_bricks_floor_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/short_bricks_floor/short_bricks_floor_rough_2k.jpg",
+          "size": 1480024,
+          "md5": "d1c2189186043205e50b5ca5072799f4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/short_bricks_floor/short_bricks_floor_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/short_bricks_floor/short_bricks_floor_nor_gl_2k.jpg",
+          "size": 4685072,
+          "md5": "7c629af4f89a2d9888cd20e3a1ee8ded",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "castle_brick_broken_06",
+      "name": "Castle Brick Broken 06",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick",
+        "outdoor",
+        "man made",
+        "indoor",
+        "wall"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/castle_brick_broken_06/castle_brick_broken_06_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_broken_06/castle_brick_broken_06_diff_2k.jpg",
+          "size": 2589859,
+          "md5": "29ee8b96d0cde5b17d4857cb22e558f4",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/castle_brick_broken_06/castle_brick_broken_06_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_broken_06/castle_brick_broken_06_rough_2k.jpg",
+          "size": 1012151,
+          "md5": "077c1bdc76b94c2da40755ad51605c95",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/castle_brick_broken_06/castle_brick_broken_06_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_brick_broken_06/castle_brick_broken_06_nor_gl_2k.jpg",
+          "size": 1551124,
+          "md5": "9635f508d26e479c1fdc0dfaeac2feff",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "white_bricks",
+      "name": "White Bricks",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick",
+        "wall",
+        "outdoor",
+        "man made",
+        "dirty"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/white_bricks/white_bricks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_bricks/white_bricks_diff_2k.jpg",
+          "size": 3428026,
+          "md5": "15b63ee17bcb2f559768746c56070687",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/white_bricks/white_bricks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_bricks/white_bricks_rough_2k.jpg",
+          "size": 2531419,
+          "md5": "501c1ae490a14ea8351084fe072b71ac",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/white_bricks/white_bricks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/white_bricks/white_bricks_nor_gl_2k.jpg",
+          "size": 2005436,
+          "md5": "3106b079c6b4ae4db3882e517caf75bc",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "random_bricks_thick",
+      "name": "Random Bricks Thick",
+      "download_category": "brick",
+      "asset_categories": [
+        "outdoor",
+        "wall",
+        "dirty",
+        "man made",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/random_bricks_thick/random_bricks_thick_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/random_bricks_thick/random_bricks_thick_diff_2k.jpg",
+          "size": 3278749,
+          "md5": "b0e73e895d6db73f577ec42692b949c7",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/random_bricks_thick/random_bricks_thick_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/random_bricks_thick/random_bricks_thick_rough_2k.jpg",
+          "size": 985064,
+          "md5": "6d7dd7aad1039e8864c7cd359c2143b2",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/random_bricks_thick/random_bricks_thick_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/random_bricks_thick/random_bricks_thick_nor_gl_2k.jpg",
+          "size": 3829497,
+          "md5": "792c2bc77a7d945979cb14df3f109630",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "herringbone_pavement",
+      "name": "Herringbone Pavement",
+      "download_category": "brick",
+      "asset_categories": [
+        "floor",
+        "man made",
+        "brick",
+        "outdoor"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/herringbone_pavement/herringbone_pavement_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_pavement/herringbone_pavement_diff_2k.jpg",
+          "size": 3796204,
+          "md5": "7ffdee19c0faa074828b4175cccb86f6",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/herringbone_pavement/herringbone_pavement_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_pavement/herringbone_pavement_rough_2k.jpg",
+          "size": 1696419,
+          "md5": "bb44196c5e66b63884d457f931e4103c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/herringbone_pavement/herringbone_pavement_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/herringbone_pavement/herringbone_pavement_nor_gl_2k.jpg",
+          "size": 4225006,
+          "md5": "683414aa7cbb22443d3712896e61ca0f",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "large_red_bricks",
+      "name": "Large Red Bricks",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick",
+        "wall",
+        "man made",
+        "outdoor",
+        "indoor",
+        "clean"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/large_red_bricks/large_red_bricks_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/large_red_bricks/large_red_bricks_diff_2k.jpg",
+          "size": 2341344,
+          "md5": "d9104b5e13d3a47798536fb47390482b",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/large_red_bricks/large_red_bricks_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/large_red_bricks/large_red_bricks_rough_2k.jpg",
+          "size": 444402,
+          "md5": "d2941d21ffb39266b07e6e18633813af",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/large_red_bricks/large_red_bricks_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/large_red_bricks/large_red_bricks_nor_gl_2k.jpg",
+          "size": 3017379,
+          "md5": "f60acdee0b6678f2a0cb55d91960da73",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "pavement_05",
+      "name": "Pavement 05",
+      "download_category": "brick",
+      "asset_categories": [
+        "outdoor",
+        "man made",
+        "floor",
+        "brick",
+        "cobblestone"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/pavement_05/pavement_05_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pavement_05/pavement_05_diff_2k.jpg",
+          "size": 4326824,
+          "md5": "b64cf2175999d397d06f9ad763b6b6aa",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/pavement_05/pavement_05_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pavement_05/pavement_05_rough_2k.jpg",
+          "size": 1601352,
+          "md5": "164db36d286a042dde704cb06f527453",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/pavement_05/pavement_05_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/pavement_05/pavement_05_nor_gl_2k.jpg",
+          "size": 3162242,
+          "md5": "74573bd94748f0089accd90ee734bc5c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "mossy_brick",
+      "name": "Mossy Brick",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/mossy_brick/mossy_brick_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick/mossy_brick_diff_2k.jpg",
+          "size": 2967928,
+          "md5": "93f8747265b75eab7493afac08bbd1a9",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/mossy_brick/mossy_brick_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick/mossy_brick_rough_2k.jpg",
+          "size": 1073350,
+          "md5": "512680a639e51be7172bc189939dffc0",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/mossy_brick/mossy_brick_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/mossy_brick/mossy_brick_nor_gl_2k.jpg",
+          "size": 4197762,
+          "md5": "cc628957a5a0e7ad56f436aba302e833",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "seaworn_sandstone_brick",
+      "name": "Seaworn Sandstone Brick",
+      "download_category": "brick",
+      "asset_categories": [
+        "brick",
+        "sandstone",
+        "outdoor",
+        "wall",
+        "man made"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/seaworn_sandstone_brick/seaworn_sandstone_brick_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/seaworn_sandstone_brick/seaworn_sandstone_brick_diff_2k.jpg",
+          "size": 2106724,
+          "md5": "536402f78ecdde2e794beb7ddf639620",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/seaworn_sandstone_brick/seaworn_sandstone_brick_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/seaworn_sandstone_brick/seaworn_sandstone_brick_rough_2k.jpg",
+          "size": 1206054,
+          "md5": "654941a6f01a070e269e00cf19fe7717",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/seaworn_sandstone_brick/seaworn_sandstone_brick_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/seaworn_sandstone_brick/seaworn_sandstone_brick_nor_gl_2k.jpg",
+          "size": 3885559,
+          "md5": "37fae6734614bc44acffcfcbd9d31201",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    },
+    {
+      "id": "concrete_brick_wall_001",
+      "name": "Concrete Brick Wall 001",
+      "download_category": "brick",
+      "asset_categories": [
+        "sandstone",
+        "wall",
+        "man made",
+        "outdoor",
+        "indoor",
+        "brick"
+      ],
+      "maps": {
+        "albedo": {
+          "path": "data/polyhaven_textures/brick/concrete_brick_wall_001/concrete_brick_wall_001_albedo_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_brick_wall_001/concrete_brick_wall_001_diffuse_2k.jpg",
+          "size": 521491,
+          "md5": "f37480065ee25eb18be6794a3e322a8e",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Diffuse"
+        },
+        "roughness": {
+          "path": "data/polyhaven_textures/brick/concrete_brick_wall_001/concrete_brick_wall_001_roughness_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_brick_wall_001/concrete_brick_wall_001_rough_2k.jpg",
+          "size": 690211,
+          "md5": "8b5a43ea821f5667b72b6ecdaa3fc305",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "Rough"
+        },
+        "normal": {
+          "path": "data/polyhaven_textures/brick/concrete_brick_wall_001/concrete_brick_wall_001_normal_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/concrete_brick_wall_001/concrete_brick_wall_001_nor_gl_2k.jpg",
+          "size": 1109576,
+          "md5": "d40d1280718535b52c5a88aba3f9f64c",
+          "resolution": "2k",
+          "format": "jpg",
+          "polyhaven_key": "nor_gl"
+        }
+      }
+    }
+  ]
+}

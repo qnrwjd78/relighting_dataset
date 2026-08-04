@@ -17,7 +17,7 @@ assets/**
 tokenlight_synthetic_1280_done.tar.gz
 logs/
 .cache/
-download/
+/download/
 donwload/
 \\\\sequenceBallsMiniShowroom/
 hf_token.txt

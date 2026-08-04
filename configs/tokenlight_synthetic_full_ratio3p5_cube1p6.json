@@ -1,8 +1,8 @@
 {
     "output_root": "outputs/tokenlight_synthetic_1280",
-    "object_manifest": "outputs/previews/objaverse_xl/objaverse_xl_objects.txt",
-    "hdri_manifest": "outputs/previews/polyhaven_hdri/polyhaven_hdri_hdris.txt",
-    "receiver_texture_manifest": "outputs/previews/polyhaven_textures/polyhaven_textures.json",
+    "object_manifest": "metadata/objaverse_xl/front2000_objects.txt",
+    "hdri_manifest": "metadata/polyhaven_hdri/polyhaven_hdri_hdris.txt",
+    "receiver_texture_manifest": "metadata/polyhaven_textures/polyhaven_textures.json",
     "fixture_scene_manifest": "manifests/fixture_scenes.jsonl",
     "scene_count": 5000,
     "seed": 20260524,
@@ -53,7 +53,8 @@
         "fit_to_object": false
     },
     "object": {
-        "target_size": 1.2,
+        "min_size": 0.6,
+        "target_size": 0.9,
         "orientation_mode": "keep",
         "primitive_fallbacks": [
             "sphere",
@@ -178,11 +179,12 @@
         ],
         "mapping": "canonical_rig",
         "reference_object_size": 1.2,
+        "world_scale": 0.75,
         "scale_rule": "bbox_max_extent",
         "scale_margin": 1.25,
         "scale_multiplier_range": [
-            0.9,
-            1.1
+            1.0,
+            1.0
         ],
         "target_center_jitter": [
             0.15,

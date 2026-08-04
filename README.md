@@ -1,168 +1,394 @@
 # Relighting Dataset
 
-Synthetic relighting dataset tools for object/portrait assets and Blender scene assets.
+Objaverse와 BlenderKit asset으로 relighting 데이터셋과 shadow mask를 생성하는 코드입니다.
 
-## Layout
+## Directory
 
 ```text
-dataset/hdri/      HDRI download_*.py and preview_*.py entrypoints
-dataset/portrait/  portrait/human download_*.py and preview_*.py entrypoints
-dataset/object/    object/material download_*.py and preview_*.py entrypoints
-dataset/scene/     scene download_*.py and preview_*.py entrypoints
-dataset/indoor/    indoor scene/HDRI download_*.py, prepare_*.py, and preview_*.py entrypoints
-dataset/outdoor/   outdoor scene/HDRI download_*.py and preview_*.py entrypoints
-dataset/utils/   shared util_*.py helpers
-scripts/   render_*_relighting.py entrypoints
-scripts/utils/   shared util_*.py helpers
-data/      downloaded source assets and caches
-outputs/   previews and final rendered datasets
-configs/   render configs
-manifests/ example manifests only
+scripts/
+  download/                         asset 다운로드, 준비, preview 코드
+  render_objaverse_random_dataset.py
+  render_objaverse_fixed_dataset.py
+  render_objaverse_fixed_multi_gpu.py  fixed renderer multi-GPU launcher
+  render_blenderkit_dataset.py
+  relighting_mask_pipeline.py       fixed renderer가 import하는 mask 코드
+  convert_exr_dataset_to_png.py      완료 scene EXR을 PNG로 변환
+  precompute_wan_vae_cache.py        PNG dataset Wan VAE latent cache
+  wan_vae2_2.py                      cache용 Wan2.2 VAE encoder 구현
+configs/                            renderer 설정
+data/                               다운로드된 GLB, HDRI, texture, weight
+metadata/                           asset manifest, index, 다운로드 report
+outputs/                            preview 이미지와 최종 렌더 결과
 ```
 
-## Dataset Prep
+기존 `dataset/` 디렉터리는 `scripts/download/`으로 이동했습니다.
 
-Download bulk datasets into `data/{dataset}`:
+## Docker
+
+모든 다운로드와 렌더 명령은 Docker 안의 `/workspace`에서 실행합니다.
 
 ```bash
-python3 dataset/hdri/download_polyhaven_hdri.py --resolution 2k --format hdr --per-category 30
-python3 dataset/object/download_polyhaven_textures.py --resolution 2k --format jpg --per-category 20
-python3 dataset/object/download_objaverse_xl.py --limit 5000
-python3 dataset/portrait/download_hsrd100.py --lod LOD1 --extract
+docker exec -it jaeho_relight_dataset bash
+cd /workspace
 ```
 
-Prepare indoor/outdoor scene sources:
+Objaverse downloader 의존성이 없다면 한 번 설치합니다.
 
 ```bash
-python3 dataset/indoor/download_blenderkit_indoor.py --query "living room interior" --max-results 5
-python3 dataset/outdoor/download_blenderkit_outdoor.py --query "night street" --max-results 5
-
-python3 dataset/indoor/download_sketchfab_indoor.py --max-results 50 --extract
-python3 dataset/outdoor/download_sketchfab_outdoor.py --max-results 50 --extract
-
-python3 dataset/indoor/download_polyhaven_indoor_hdri.py --per-category 30
-python3 dataset/outdoor/download_polyhaven_outdoor_hdri.py --per-category 30
-
-python3 dataset/indoor/prepare_3dfront.py --root data/indoor/3dfront
-python3 dataset/indoor/prepare_hssd.py --root data/indoor/hssd
+python3 -m pip install -U objaverse pandas pyarrow tqdm fsspec
 ```
 
-3D-FRONT and HSSD require accepting their dataset terms separately; the `prepare_*.py` scripts index already-downloaded folders.
+## Objaverse Download
 
-Prepare portrait sources:
+앞에서부터 Sketchfab GLB 2,000개를 다운로드하고 renderer용 manifest를 생성합니다.
 
 ```bash
-python3 dataset/portrait/download_facescape_tu.py --extract --delete-zip-after-extract
-python3 dataset/portrait/download_renderpeople_free.py --extract --delete-zip-after-extract
-python3 dataset/portrait/download_3dscanstore_free_head.py --extract --delete-zip-after-extract
-python3 dataset/portrait/download_humano_free.py --dry-run
-python3 dataset/portrait/download_sketchfab_human.py --dry-run
+python3 scripts/download/object/download_objaverse_xl.py \
+  --source sketchfab \
+  --file-types glb \
+  --start 0 \
+  --limit 2000 \
+  --processes 8 \
+  --numbered-mode none \
+  --download-dir data/objaverse_xl \
+  --report-out metadata/objaverse_xl/reports/front2000 \
+  --write-manifest metadata/objaverse_xl/front2000_objects.txt
 ```
 
-Preview portrait/object/HDRI assets into `outputs/previews/{dataset}`:
+주요 결과는 다음과 같습니다.
+
+```text
+data/objaverse_xl/                                      실제 GLB와 annotation cache
+metadata/objaverse_xl/reports/front2000/download_manifest.json 다운로드 결과
+metadata/objaverse_xl/front2000_objects.txt                    renderer 입력 manifest
+```
+
+다운로드 수를 확인합니다.
 
 ```bash
-blender -b --python dataset/portrait/preview_renderpeople_free.py -- \
-  --root data/renderpeople_free/extracted
+wc -l metadata/objaverse_xl/front2000_objects.txt
+sha256sum metadata/objaverse_xl/front2000_objects.txt
+```
 
-blender -b --python dataset/portrait/preview_facescape_tu.py -- \
-  --root data/facescape/tu_model/extracted \
-  --add-eyes \
-  --add-hair-cap \
-  --overwrite
+다른 서버에서 동일한 object와 index 순서를 보장하려면 첫 서버의
+`metadata/objaverse_xl/front2000_objects.txt`를 복사한 뒤 exact selection으로 다운로드합니다.
 
-blender -b --python dataset/portrait/preview_hsrd100.py -- \
-  --root data/hsrd100/LOD1
+```bash
+python3 scripts/download/object/download_objaverse_xl.py \
+  --source sketchfab \
+  --file-types glb \
+  --selection-manifest metadata/objaverse_xl/front2000_objects.txt \
+  --processes 8 \
+  --numbered-mode none \
+  --download-dir data/objaverse_xl \
+  --report-out metadata/objaverse_xl/reports/front2000 \
+  --write-manifest metadata/objaverse_xl/front2000_objects.txt
+```
 
-python3 dataset/portrait/preview_blenderkit_human.py \
+단순히 `--start 0 --limit 2000`을 반복하는 방식은 Objaverse annotation snapshot이
+바뀌면 선택 결과가 달라질 수 있으므로 서버 간 분산 작업에는 exact selection을 사용합니다.
+
+## HDRI Download
+
+다섯 category에서 30개씩 총 150개의 Poly Haven HDRI를 받습니다.
+
+```bash
+python3 scripts/download/hdri/download_polyhaven_hdri.py \
+  --categories studio indoor outdoor urban nature \
+  --per-category 30 \
+  --resolution 2k \
+  --format hdr \
+  --out-dir data/polyhaven_hdri \
+  --manifest metadata/polyhaven_hdri/polyhaven_hdri_hdris.txt \
+  --metadata-out metadata/polyhaven_hdri/polyhaven_hdri_index.json
+```
+
+receiver에 Poly Haven texture를 사용하려면 추가로 받습니다. 이 단계는 선택 사항입니다.
+
+```bash
+python3 scripts/download/object/download_polyhaven_textures.py \
+  --resolution 2k \
+  --format jpg \
+  --per-category 20
+```
+
+다운로드가 끝나면 random/fixed renderer 모두 config의
+`metadata/polyhaven_textures/polyhaven_textures.json`을 자동으로 읽습니다.
+바닥은 config의 `receiver_texture_probability` 확률로 image texture를 사용하고,
+벽은 `wall_texture_probability` 설정을 따릅니다. Texture를 끄려면 renderer 명령에
+`--no-receiver-textures`를 추가합니다. 다른 manifest는
+`--receiver-texture-manifest PATH`로 지정할 수 있습니다.
+
+## Random Objaverse Render
+
+Objaverse asset마다 position, color, power를 config 설정에 따라 랜덤하게 생성합니다.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 blender -b \
+  --python scripts/render_objaverse_random_dataset.py -- \
+  --config configs/tokenlight_synthetic_full_ratio3p5_cube1p6.json \
+  --output outputs/objaverse_random \
+  --start-index 0 \
+  --max-scenes 2000 \
+  --object-min-size 0.6 \
+  --object-target-size 0.9 \
+  --rig-reference-object-size 1.2 \
+  --canonical-world-scale 0.75 \
+  --resolution 480 \
+  --samples 16 \
+  --component-format exr \
+  --hdri-mode on \
+  --pbr \
+  --only all \
+  --fail-fast
+```
+
+이 renderer는 config의 다음 manifest를 사용합니다.
+
+```text
+metadata/objaverse_xl/front2000_objects.txt
+metadata/polyhaven_hdri/polyhaven_hdri_hdris.txt
+metadata/polyhaven_textures/polyhaven_textures.json  선택 사항
+```
+
+## Fixed Objaverse Render
+
+고정 renderer의 설정은 다음과 같습니다.
+
+- 카메라 기준 canonical cube의 위쪽 절반에 `4 x 4 x 2` 조명 후보 32개
+- power는 `0.30, 0.60, 0.90, 1.20` 중 하나로 고정 배정
+- point light color는 흰색
+- 유효한 조명 위치만 저장
+- scene마다 HDRI 하나를 선택하여 source, light render, mask render에 동일하게 사용
+- ambient-subtracted local shadow ratio mask 생성
+
+먼저 scene 하나만 확인합니다.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 blender -b \
+  --python scripts/render_objaverse_fixed_dataset.py -- \
+  --object-manifest metadata/objaverse_xl/front2000_objects.txt \
+  --object-offset 0 \
+  --object-limit 1 \
+  --object-min-size 0.6 \
+  --object-target-size 0.9 \
+  --rig-reference-object-size 1.2 \
+  --canonical-world-scale 0.75 \
+  --output-root outputs/fixed32_test \
+  --resolution 480 \
+  --samples 16 \
+  --component-format exr \
+  --gpu-devices 0 \
+  --fixed-upper-half-white-grid \
+  --power-values 0.30 0.60 0.90 1.20 \
+  --ambient-subtracted-shadow-ratio \
+  --shadow-threshold 0.05 \
+  --shadow-support-threshold 0.001 \
+  --fail-fast
+```
+
+2,000 scene을 한 terminal에서 GPU 네 장으로 실행합니다. Launcher가 범위를 균등 분할하고 GPU별 Blender process를 생성하며, 각 process의 출력은 현재 terminal에 그대로 표시됩니다. 유효한 조명이 0개인 scene은 failed로 기록하고 다음 scene으로 진행합니다.
+
+```bash
+python3 scripts/render_objaverse_fixed_multi_gpu.py \
+  --gpus 0 1 2 3 \
+  --object-count 2000 \
+  --output-root outputs/front2000_fixed32_size06_09_texture_exr_shards
+```
+
+현재 설정은 launcher 기본값이므로 위 명령만으로 object 크기 `0.6~0.9`, rig 기준 `1.2`, canonical world scale `0.75`, `480x480`, 16 samples, EXR, fixed 32개 흰색 point light와 네 power를 사용합니다. 재실행하면 정상 `meta.json`이 있는 scene은 자동으로 건너뜁니다. 처음부터 다시 렌더링하려면 `--no-resume`을 추가합니다.
+
+Launcher는 내부적으로 `CUDA_VISIBLE_DEVICES`로 각 process에 GPU 한 장만 노출하고 Blender worker에는 `--gpu-devices 0`을 전달합니다. 완료 후 output root의 `dataset_manifest.json`에 전체 성공, 실패, 누락 수를 기록합니다.
+
+조명 감쇠와 무관한 object-only geometry shadow/direct-lit mask를 사용하려면 다음 옵션을 추가합니다. `min-area 0`은 작은 component를 제거하지 않고, `pad-radius 2`는 shadow 경계만 작게 확장합니다. Geometry mode는 mask용 white render를 만들지 않습니다.
+
+```bash
+--shadow-mask-mode geometry-ray \
+--min-area 0 \
+--pad-radius 2
+```
+
+여러 서버가 서로 다른 범위를 맡을 때는 global `--start-index`와 `--object-count`를 지정합니다. 두 서버의 manifest SHA256이 같은지 launcher 시작 출력에서 확인합니다.
+
+```bash
+# Server A: scene_000000 ~ scene_000999
+python3 scripts/render_objaverse_fixed_multi_gpu.py \
+  --gpus 0 1 2 3 \
+  --start-index 0 \
+  --object-count 1000 \
+  --output-root outputs/front2000_fixed_part_0000_0999
+
+# Server B: scene_001000 ~ scene_001999
+python3 scripts/render_objaverse_fixed_multi_gpu.py \
+  --gpus 0 1 2 3 \
+  --start-index 1000 \
+  --object-count 1000 \
+  --output-root outputs/front2000_fixed_part_1000_1999
+```
+
+## BlenderKit Download And Render
+
+API key를 환경 변수로 설정한 다음 scene index와 preview를 만듭니다.
+
+```bash
+export BLENDERKIT_API_KEY="$(tr -d '\r\n' < blenderkit_key.txt)"
+
+python3 scripts/download/scene/preview_blenderkit.py \
+  --target-count 2000 \
+  --asset-type scene \
+  --free-only \
+  --show-subprocess-output
+```
+
+주요 결과는 다음과 같습니다.
+
+```text
+outputs/previews/blenderkit/blenderkit_index.json
+outputs/previews/blenderkit/img/
+outputs/previews/blenderkit/metadata/
+```
+
+classification 파일이 있으면 선택된 category만 사용합니다. 파일이 없으면 `blenderkit_index.json`의 모든 scene을 사용합니다.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 python3 scripts/render_blenderkit_dataset.py \
+  --index-json outputs/previews/blenderkit/blenderkit_index.json \
+  --classification outputs/previews/blenderkit/blenderkit_scene_use_classification.txt \
   --api-key-file blenderkit_key.txt \
-  --queries-file dataset/portrait/queries_blenderkit_human.txt \
-  --target-count 50
-
-python3 dataset/hdri/preview_polyhaven_hdri.py
-```
-
-Build a final curated portrait manifest from accepted source manifests:
-
-```bash
-python3 dataset/portrait/build_portrait_asset_manifest.py \
-  --inputs \
-    outputs/previews/renderpeople_free/accepted.txt \
-    outputs/previews/humano_free/accepted.txt \
-    outputs/previews/blenderkit_human/accepted.txt \
-    outputs/previews/sketchfab_human/accepted.txt \
-  --out outputs/previews/portrait_assets/portrait_assets_objects.txt
-```
-
-Preview outputs use:
-
-```text
-outputs/previews/{dataset}/img/{dataset}_000001.png
-outputs/previews/{dataset}/metadata/{dataset}_000001.json
-outputs/previews/{dataset}/{dataset}_index.json
-```
-
-## Render
-
-Run commands directly in the terminal to see live progress bars. Avoid `nohup ... &` when you want progress feedback.
-
-Object or portrait assets:
-
-```bash
-blender -b --python scripts/render_object_relighting.py -- \
-  --config configs/tokenlight_synthetic_full.json \
-  --output outputs/objaverse_xl \
-  --width 1280 \
-  --height 704 \
-  --samples 512 \
-  --max-scenes 500 \
+  --config configs/tokenlight_synthetic_full_ratio3p5_cube1p6.json \
+  --output outputs/blenderkit_dataset \
+  --start 0 \
+  --limit 2000 \
+  --width 480 \
+  --height 480 \
+  --samples 16 \
   --component-format exr \
+  --ambient-source hdri \
   --hdri-mode on \
-  --only all
+  --pbr \
+  --skip-existing
 ```
-
-Blender scene assets use the scene entrypoint:
-
-```bash
-blender -b --python scripts/render_scene_relighting.py -- \
-  --config configs/tokenlight_synthetic_full.json \
-  --output outputs/blenderkit \
-  --width 1280 \
-  --height 704 \
-  --samples 512 \
-  --max-scenes 500 \
-  --component-format exr \
-  --hdri-mode on \
-  --only fixtures
-```
-
-`--component-format` can be `exr`, `png`, or `both`.
-
-- `exr`: linear HDR components
-- `png`: tone-mapped PNG components
-- `both`: saves both
-
-PNG components are created from linear values using:
-
-```python
-tone_mapped = linear / (1 + linear)
-png = tone_mapped ** (1 / 2.2)
-```
-
-`--hdri-mode` can be `on`, `off`, or `random`. HDRI is applied to ambient renders. Receiver floor/wall materials use downloaded Poly Haven PBR textures when `receiver_texture_manifest` exists, otherwise procedural materials are used.
 
 ## Output
 
+Objaverse fixed output은 다음 형태입니다.
+
 ```text
-outputs/{dataset}/
+outputs/fixed32_test/
   dataset_manifest.json
   scenes/
     scene_000000/
       meta.json
-      spatial/
-        ambient.exr
-        point_lights/light_000.exr
-      diffuse/
-      masks/
-      pbr/
+      source.exr
+      pbr/depth.exr
+      pbr/normal.exr
+      masks/object_mask.png
+      samples/position/position_000.exr
+      samples/position/position_000_masks/
+```
+
+mask 생성 구현은 `scripts/relighting_mask_pipeline.py`에 있으며 fixed renderer가 import해서 사용합니다.
+
+## EXR To PNG
+
+`meta.json`이 있는 완료 scene만 변환합니다. `failed_scenes/`와 `meta.json`이 없는 미완료 scene은 자동으로 무시합니다.
+
+4-GPU shard 결과를 하나의 `scenes/` 디렉터리로 통합하면서 변환합니다.
+
+```bash
+python3 scripts/convert_exr_dataset_to_png.py \
+  --input outputs/front2000_fixed32_ratio_exr_shards \
+  --output outputs/front2000_fixed32_ratio_png \
+  --gpu-shard \
+  --workers 16
+```
+
+입력이 shard 구조가 아니라 바로 `scenes/`를 포함하면 `--gpu-shard`를 빼면 됩니다.
+
+```bash
+python3 scripts/convert_exr_dataset_to_png.py \
+  --input outputs/fixed32_test \
+  --output outputs/fixed32_test_png \
+  --workers 8
+```
+
+기본 설정은 mask 생성에 사용한 `position_*_white/`와 `mask_reference/ambient_white/`를 제외합니다. 이 중간 렌더도 PNG로 포함하려면 다음 옵션을 추가합니다.
+
+```bash
+--with-white
+```
+
+변환 규칙은 다음과 같습니다.
+
+- source, position, white 조명 EXR: Reinhard tone mapping과 gamma 2.2
+- depth EXR: scene별 1%~99% depth 정규화, 가까운 영역이 밝게 저장
+- normal EXR: `[-1, 1]` 값을 `[0, 1]`로 인코딩
+- albedo와 roughness EXR: `[0, 1]` 범위 PNG로 인코딩
+- 기존 mask PNG와 NPY: 상대 경로를 유지하여 hardlink, 불가능하면 copy
+- metadata: 변환된 EXR 경로와 key를 PNG 기준으로 갱신
+
+먼저 대상 scene 수만 확인하려면 `--dry-run`을 사용합니다.
+
+```bash
+python3 scripts/convert_exr_dataset_to_png.py \
+  --input outputs/front2000_fixed32_ratio_exr_shards \
+  --output outputs/front2000_fixed32_ratio_png \
+  --gpu-shard \
+  --dry-run
+```
+
+## Wan VAE Luminance Cache
+
+`scripts/precompute_wan_vae_cache.py`는 RGB PNG를 luminance로 변환하고 3채널로
+복제한 뒤 Wan2.2 VAE encoder에 넣습니다. Scene마다 `source_latent`와
+`sample_latents`를 하나의 `.pt` 파일로 저장합니다. 현재 fixed renderer의
+`meta.json` 구조와 예전 `samples_manifest.json` 구조를 모두 지원합니다.
+
+Wan encoder 코드는 `scripts/wan_vae2_2.py`에 포함되어 있습니다. 전체 Wan 모델 대신 VAE encoder weight 하나만 다운로드합니다.
+
+```bash
+python3 -m pip install -U "huggingface_hub[cli]"
+hf download Wan-AI/Wan2.2-TI2V-5B Wan2.2_VAE.pth \
+  --local-dir data/weights/Wan2.2-TI2V-5B
+```
+
+공식 weight SHA-256:
+
+```text
+20eb789667fa5e60e7516bf509512f6cb61f01b0aa0695eadaea930c13892b36
+```
+
+Fixed PNG dataset을 GPU 네 장으로 luminance cache 처리합니다.
+
+```bash
+DATASET=outputs/front2000_fixed32_size09_texture_png
+CACHE=outputs/front2000_fixed32_size09_texture_wanvae_luminance_480_cache
+
+PIDS=()
+for GPU in 0 1 2 3; do
+  CUDA_VISIBLE_DEVICES=$GPU python3 scripts/precompute_wan_vae_cache.py \
+    --dataset-root "$DATASET" \
+    --ckpt-dir data/weights/Wan2.2-TI2V-5B \
+    --out-dir "$CACHE" \
+    --resolution 480 \
+    --image-transform luminance \
+    --batch-size 4 \
+    --dtype bf16 \
+    --device cuda \
+    --num-shards 4 \
+    --shard-id "$GPU" &
+  PIDS+=("$!")
+done
+
+STATUS=0
+for PID in "${PIDS[@]}"; do
+  wait "$PID" || STATUS=1
+done
+test "$STATUS" -eq 0
+```
+
+완료 scene 수를 확인합니다.
+
+```bash
+find "$CACHE/scenes" -name '*.pt' | wc -l
 ```
