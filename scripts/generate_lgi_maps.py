@@ -9,8 +9,10 @@ sample, reproject, and angular aggregation procedure.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import math
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -24,11 +26,27 @@ except ImportError as exc:  # pragma: no cover - dependency error is user-facing
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--scene-dir", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, default=None)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--scene-dir", type=Path, help="Generate one scene.")
+    source.add_argument("--dataset-root", type=Path, help="Generate every scene below a dataset root.")
+    parser.add_argument("--output-dir", type=Path, help="Output directory for --scene-dir mode.")
+    parser.add_argument("--output-root", type=Path, help="Output root for --dataset-root mode.")
+    parser.add_argument(
+        "--in-place",
+        action="store_true",
+        help="Write position_NNN channel directories directly inside each source scene.",
+    )
+    parser.add_argument(
+        "--channel-files",
+        action="store_true",
+        help="Store min/max/nearest and debug arrays as separate NPY files.",
+    )
     parser.add_argument("--num-ray-samples", type=int, default=16)
     parser.add_argument("--tile-rows", type=int, default=32)
     parser.add_argument("--hard-threshold-deg", type=float, default=5.0)
+    parser.add_argument("--workers", type=int, default=1, help="Parallel scene workers in dataset mode.")
+    parser.add_argument("--overwrite", action="store_true", help="Regenerate completed scene outputs.")
+    parser.add_argument("--fail-fast", action="store_true", help="Stop at the first failed scene.")
     parser.add_argument(
         "--position-id",
         type=int,
@@ -255,7 +273,10 @@ def save_hard_overview(path: Path, output_dir: Path, samples: list[dict], width:
     draw = ImageDraw.Draw(canvas)
     for index, sample in enumerate(samples):
         position_id = int(sample["position_id"])
-        hard = np.load(output_dir / sample["lgi_npz"])["hard"] * 255
+        if "lgi_npz" in sample:
+            hard = np.load(output_dir / sample["lgi_npz"])["hard"] * 255
+        else:
+            hard = np.load(output_dir / sample["channels"]["hard"]) * 255
         image = Image.fromarray(hard.astype(np.uint8), mode="L").convert("RGB")
         image = image.resize((thumb_width, thumb_height), resample=Image.NEAREST)
         x = (index % columns) * thumb_width
@@ -276,12 +297,19 @@ def position_samples(meta: dict, selected_ids: set[int] | None) -> list[dict]:
     return samples
 
 
-def main() -> None:
-    args = parse_args()
-    if args.num_ray_samples <= 0 or args.tile_rows <= 0:
-        raise SystemExit("--num-ray-samples and --tile-rows must be positive")
-
-    scene_dir = args.scene_dir.resolve()
+def generate_scene(
+    scene_dir: Path,
+    output_dir: Path,
+    num_ray_samples: int,
+    tile_rows: int,
+    hard_threshold_deg: float,
+    selected_position_ids: tuple[int, ...] | None,
+    verbose_lights: bool,
+    channel_files: bool,
+    index_filename: str,
+) -> dict:
+    scene_dir = scene_dir.resolve()
+    output_dir = output_dir.resolve()
     meta_path = scene_dir / "meta.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     width, height = map(int, meta["render"]["resolution"])
@@ -293,16 +321,15 @@ def main() -> None:
 
     intrinsic, world_to_cv = camera_model(meta, width, height)
     depth_z = ray_distance_to_z(depth_ray, intrinsic)
-    output_dir = (args.output_dir or (scene_dir / "lgi_fixed32")).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    selected_ids = set(args.position_id) if args.position_id else None
+    selected_ids = set(selected_position_ids) if selected_position_ids else None
     samples = position_samples(meta, selected_ids)
     if not samples:
         raise ValueError("No matching position samples found")
 
     output_samples = []
-    threshold_rad = math.radians(args.hard_threshold_deg)
+    threshold_rad = math.radians(hard_threshold_deg)
     for sample in samples:
         light = sample["light"]
         position_id = int(light["id"])
@@ -312,31 +339,65 @@ def main() -> None:
             depth_z,
             intrinsic,
             light_cv,
-            args.num_ray_samples,
-            args.tile_rows,
+            num_ray_samples,
+            tile_rows,
             threshold_rad,
         )
-        stem = f"position_{position_id:03d}"
-        npz_path = output_dir / f"{stem}.npz"
-        np.savez_compressed(
-            npz_path,
-            **result,
-            intrinsic=intrinsic,
-            world_to_cv=world_to_cv,
-            light_world=np.asarray(light["world_position"], dtype=np.float32),
-            light_cv=light_cv.astype(np.float32),
-        )
-        save_preview(output_dir / f"{stem}_preview.png", result, stem)
+        stem = f"position_{position_id:02d}" if channel_files else f"position_{position_id:03d}"
         sample_output = {
             "position_id": position_id,
             "sample_name": sample["name"],
-            "lgi_npz": npz_path.name,
-            "preview": f"{stem}_preview.png",
             "light_world": [float(value) for value in light["world_position"]],
             "light_cv": [float(value) for value in light_cv],
             "valid_ratio": float(result["valid"].mean()),
             "hard_ratio": float(result["hard"].mean()),
         }
+        if channel_files:
+            position_dir = output_dir / stem
+            position_dir.mkdir(parents=True, exist_ok=True)
+            arrays = {
+                "min": result["lgi"][0],
+                "max": result["lgi"][1],
+                "nearest": result["lgi"][2],
+                "valid": result["valid"],
+                "min_abs": result["min_abs"],
+                "hard": result["hard"],
+            }
+            channel_paths = {}
+            for name, array in arrays.items():
+                relative_path = Path(stem) / f"{name}.npy"
+                np.save(output_dir / relative_path, array)
+                channel_paths[name] = str(relative_path)
+            camera_path = Path(stem) / "camera_light.npz"
+            np.savez(
+                output_dir / camera_path,
+                intrinsic=intrinsic,
+                world_to_cv=world_to_cv,
+                light_world=np.asarray(light["world_position"], dtype=np.float32),
+                light_cv=light_cv.astype(np.float32),
+            )
+            preview_path = Path(stem) / "preview.png"
+            save_preview(output_dir / preview_path, result, stem)
+            sample_output.update(
+                {
+                    "channels": channel_paths,
+                    "camera_light": str(camera_path),
+                    "preview": str(preview_path),
+                }
+            )
+        else:
+            npz_path = output_dir / f"{stem}.npz"
+            np.savez_compressed(
+                npz_path,
+                **result,
+                intrinsic=intrinsic,
+                world_to_cv=world_to_cv,
+                light_world=np.asarray(light["world_position"], dtype=np.float32),
+                light_cv=light_cv.astype(np.float32),
+            )
+            preview_path = f"{stem}_preview.png"
+            save_preview(output_dir / preview_path, result, stem)
+            sample_output.update({"lgi_npz": npz_path.name, "preview": preview_path})
         gt_shadow_rel = sample.get("masks", {}).get("object_shadow_clean")
         if gt_shadow_rel and (scene_dir / gt_shadow_rel).is_file():
             gt_shadow = load_binary_mask(scene_dir / gt_shadow_rel)
@@ -345,10 +406,11 @@ def main() -> None:
                 **shadow_comparison(result["hard"].astype(bool), gt_shadow),
             }
         output_samples.append(sample_output)
-        print(
-            f"{stem}: valid={output_samples[-1]['valid_ratio']:.4f}, "
-            f"hard={output_samples[-1]['hard_ratio']:.4f}"
-        )
+        if verbose_lights:
+            print(
+                f"{stem}: valid={output_samples[-1]['valid_ratio']:.4f}, "
+                f"hard={output_samples[-1]['hard_ratio']:.4f}"
+            )
 
     index = {
         "schema": "tokenlight_lgi_fixed32_v1",
@@ -358,16 +420,206 @@ def main() -> None:
         "coordinate_system": "OpenCV camera: +X right, +Y down, +Z forward",
         "lgi_channels": ["min_angle_difference", "max_angle_difference", "signed_nearest_to_zero"],
         "angle_unit": "radian",
-        "num_ray_samples": args.num_ray_samples,
-        "hard_threshold_degrees": args.hard_threshold_deg,
+        "num_ray_samples": num_ray_samples,
+        "hard_threshold_degrees": hard_threshold_deg,
         "intrinsic": intrinsic.tolist(),
         "world_to_cv": world_to_cv.tolist(),
         "samples": output_samples,
     }
-    save_hard_overview(output_dir / "hard_overview.png", output_dir, output_samples, width, height)
-    index["hard_overview"] = "hard_overview.png"
-    (output_dir / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
-    print(f"Wrote {len(output_samples)} LGI maps to {output_dir}")
+    overview_filename = "lgi_hard_overview.png" if index_filename == "lgi_index.json" else "hard_overview.png"
+    save_hard_overview(output_dir / overview_filename, output_dir, output_samples, width, height)
+    index["storage_layout"] = "separate_channel_npy" if channel_files else "compressed_npz"
+    index["hard_overview"] = overview_filename
+    (output_dir / index_filename).write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    return {
+        "scene_id": meta["scene_id"],
+        "source_scene": str(scene_dir),
+        "output_dir": str(output_dir),
+        "position_count": len(output_samples),
+    }
+
+
+def discover_scenes(dataset_root: Path) -> list[Path]:
+    scenes = {
+        meta_path.parent.resolve()
+        for meta_path in dataset_root.resolve().rglob("meta.json")
+        if meta_path.parent.name.startswith("scene_")
+    }
+    return sorted(scenes, key=lambda path: (path.name, str(path)))
+
+
+def output_is_complete(
+    scene_dir: Path,
+    output_dir: Path,
+    selected_position_ids: tuple[int, ...] | None,
+    num_ray_samples: int,
+    hard_threshold_deg: float,
+    index_filename: str,
+) -> bool:
+    index_path = output_dir / index_filename
+    if not index_path.is_file():
+        return False
+    try:
+        scene_meta = json.loads((scene_dir / "meta.json").read_text(encoding="utf-8"))
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+        expected = position_samples(
+            scene_meta,
+            set(selected_position_ids) if selected_position_ids else None,
+        )
+        outputs = index.get("samples", [])
+        return (
+            index.get("num_ray_samples") == num_ray_samples
+            and math.isclose(float(index.get("hard_threshold_degrees")), hard_threshold_deg)
+            and len(outputs) == len(expected)
+            and all(
+                (
+                    (output_dir / sample["lgi_npz"]).is_file()
+                    if "lgi_npz" in sample
+                    else all((output_dir / path).is_file() for path in sample["channels"].values())
+                )
+                for sample in outputs
+            )
+        )
+    except (KeyError, TypeError, ValueError, OSError, json.JSONDecodeError):
+        return False
+
+
+def run_scene_job(job: tuple) -> dict:
+    return generate_scene(*job)
+
+
+def main() -> None:
+    args = parse_args()
+    if args.num_ray_samples <= 0 or args.tile_rows <= 0 or args.workers <= 0:
+        raise SystemExit("--num-ray-samples, --tile-rows, and --workers must be positive")
+    if args.scene_dir and args.output_root:
+        raise SystemExit("--output-root is only valid with --dataset-root")
+    if args.dataset_root and args.output_dir:
+        raise SystemExit("--output-dir is only valid with --scene-dir")
+    if args.in_place and not args.dataset_root:
+        raise SystemExit("--in-place requires --dataset-root")
+    if args.in_place and args.output_root:
+        raise SystemExit("--in-place writes to the dataset, so do not pass --output-root")
+    if args.in_place:
+        args.channel_files = True
+
+    selected_position_ids = tuple(args.position_id) if args.position_id else None
+    if args.scene_dir:
+        scene_dir = args.scene_dir.resolve()
+        output_dir = (args.output_dir or (scene_dir / "lgi_fixed32")).resolve()
+        result = generate_scene(
+            scene_dir,
+            output_dir,
+            args.num_ray_samples,
+            args.tile_rows,
+            args.hard_threshold_deg,
+            selected_position_ids,
+            True,
+            args.channel_files,
+            "index.json",
+        )
+        print(f"Wrote {result['position_count']} LGI maps to {output_dir}")
+        return
+
+    dataset_root = args.dataset_root.resolve()
+    output_root = (
+        dataset_root
+        if args.in_place
+        else (args.output_root or dataset_root.with_name(f"{dataset_root.name}_lgi_fixed32"))
+    ).resolve()
+    scene_index_filename = "lgi_index.json" if args.in_place else "index.json"
+    scenes = discover_scenes(dataset_root)
+    if not scenes:
+        raise SystemExit(f"No scene_*/meta.json found below {dataset_root}")
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    completed = []
+    skipped = []
+    failed = []
+    jobs = []
+    for scene_dir in scenes:
+        output_dir = scene_dir if args.in_place else output_root / "scenes" / scene_dir.name
+        if not args.overwrite and output_is_complete(
+            scene_dir,
+            output_dir,
+            selected_position_ids,
+            args.num_ray_samples,
+            args.hard_threshold_deg,
+            scene_index_filename,
+        ):
+            skipped.append(scene_dir.name)
+            continue
+        jobs.append(
+            (
+                scene_dir,
+                output_dir,
+                args.num_ray_samples,
+                args.tile_rows,
+                args.hard_threshold_deg,
+                selected_position_ids,
+                False,
+                args.channel_files,
+                scene_index_filename,
+            )
+        )
+
+    print(
+        f"Found {len(scenes)} scenes: {len(jobs)} pending, "
+        f"{len(skipped)} already complete; workers={args.workers}"
+    )
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.workers) as executor:
+        future_to_job = {executor.submit(run_scene_job, job): job for job in jobs}
+        for done_index, future in enumerate(concurrent.futures.as_completed(future_to_job), start=1):
+            scene_dir = future_to_job[future][0]
+            try:
+                result = future.result()
+                completed.append(result)
+                print(
+                    f"[{done_index}/{len(jobs)}] {result['scene_id']}: "
+                    f"{result['position_count']} LGI maps"
+                )
+            except Exception as exc:
+                failure = {
+                    "scene_id": scene_dir.name,
+                    "source_scene": str(scene_dir),
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "traceback": traceback.format_exc(),
+                }
+                failed.append(failure)
+                print(f"[{done_index}/{len(jobs)}] {scene_dir.name}: FAILED: {failure['error']}")
+                if args.fail_fast:
+                    for pending in future_to_job:
+                        pending.cancel()
+                    break
+
+    dataset_index = {
+        "schema": "tokenlight_lgi_fixed32_dataset_v1",
+        "source_dataset": str(dataset_root),
+        "output_root": str(output_root),
+        "scene_count": len(scenes),
+        "completed_count": len(completed),
+        "skipped_count": len(skipped),
+        "failed_count": len(failed),
+        "num_ray_samples": args.num_ray_samples,
+        "hard_threshold_degrees": args.hard_threshold_deg,
+        "selected_position_ids": list(selected_position_ids) if selected_position_ids else None,
+        "storage_layout": "separate_channel_npy" if args.channel_files else "compressed_npz",
+        "in_place": args.in_place,
+        "completed": sorted(completed, key=lambda item: item["scene_id"]),
+        "skipped": sorted(skipped),
+        "failed": sorted(failed, key=lambda item: item["scene_id"]),
+    }
+    dataset_index_path = output_root / ("lgi_dataset_index.json" if args.in_place else "dataset_index.json")
+    dataset_index_path.write_text(
+        json.dumps(dataset_index, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    print(
+        f"Dataset complete: completed={len(completed)}, skipped={len(skipped)}, "
+        f"failed={len(failed)}; index={dataset_index_path}"
+    )
+    if failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

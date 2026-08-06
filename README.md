@@ -357,6 +357,35 @@ Blender GT shadow 비교를, `hard_overview.png`는 전체 fixed-grid 결과를 
 
 조명 하나만 확인하려면 `--position-id 0`을 추가합니다.
 
+데이터셋의 모든 scene을 처리하려면 dataset root와 별도 output root를 지정합니다.
+완료된 scene은 기본적으로 건너뛰므로 같은 명령으로 이어서 실행할 수 있습니다.
+
+```bash
+python3 scripts/generate_lgi_maps.py \
+  --dataset-root outputs/final_objaverse_front2000_480_exr_s16_fixed32x4_hdri_ratio \
+  --output-root outputs/final_objaverse_front2000_480_lgi_fixed32 \
+  --workers 4
+```
+
+결과는 `OUTPUT_ROOT/scenes/scene_NNNNNN/`에 scene별로 저장되며 전체 처리 결과는
+`OUTPUT_ROOT/dataset_index.json`에 기록됩니다. 기존 출력을 다시 만들려면
+`--overwrite`를 추가합니다. worker 하나가 scene 하나를 처리하므로 `--workers`는
+사용 가능한 CPU와 RAM에 맞춰 지정합니다.
+
+학습 데이터 scene 내부에 LGI 채널을 각각 저장하려면 in-place 모드를 사용합니다.
+
+```bash
+python3 scripts/generate_lgi_maps.py \
+  --dataset-root outputs/final_objaverse_front2000_480_exr_s16_fixed32x4_hdri_ratio \
+  --in-place \
+  --channel-files \
+  --workers 4
+```
+
+이 모드는 각 scene에 `position_00/min.npy`, `max.npy`, `nearest.npy`를 저장합니다.
+`valid.npy`, `min_abs.npy`, `hard.npy`, `camera_light.npz`, `preview.png`도 같은
+position 디렉터리에 저장하며 scene-level metadata는 `lgi_index.json`입니다.
+
 ## Wan VAE Luminance Cache
 
 `scripts/precompute_wan_vae_cache.py`는 RGB PNG를 luminance로 변환하고 3채널로
