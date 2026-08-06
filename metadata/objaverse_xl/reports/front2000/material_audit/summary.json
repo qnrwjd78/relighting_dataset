@@ -1,0 +1,10 @@
+{
+  "manifest": "metadata/objaverse_xl/front2000_objects.txt",
+  "total": 2000,
+  "valid": 2000,
+  "missing_or_invalid": 0,
+  "unlit": 256,
+  "alpha_blend": 362,
+  "alpha_mask": 21,
+  "shadow_material_risk": 613
+}

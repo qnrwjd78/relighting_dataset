@@ -1,0 +1,106 @@
+{
+  "schema": "objaverse_shadow_material_scene_v1",
+  "scene_id": "scene_000166",
+  "status": "pass",
+  "reason": "original_material_casts_measurable_shadow",
+  "object_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-080/378810d0c53745eaaa3537ccfb4ca917.glb",
+  "material": {
+    "has_unlit": false,
+    "alpha_modes": [
+      "BLEND",
+      "OPAQUE"
+    ],
+    "material_count": 100
+  },
+  "transform": {
+    "original_bbox_min": [
+      -23.790971755981445,
+      -16.361454010009766,
+      -1.5883021354675293
+    ],
+    "original_bbox_max": [
+      -4.167750358581543,
+      13.898656845092773,
+      12.80324935913086
+    ],
+    "scale": 0.029742125014331853
+  },
+  "light_count": 3,
+  "passing_light_count": 3,
+  "max_geometry_coverage": 0.9841219434741187,
+  "max_shadow_iou": 0.8403388725969371,
+  "measurements": [
+    {
+      "light_id": 0,
+      "position": [
+        -1.2,
+        -1.2,
+        1.5
+      ],
+      "eligible": true,
+      "casts_shadow": true,
+      "geometry_shadow_pixels": 3149,
+      "actual_shadow_pixels": 3701,
+      "overlap_pixels": 3099,
+      "geometry_coverage": 0.9841219434741187,
+      "shadow_iou": 0.8261796854172221,
+      "actual_to_geometry_loss_energy": 1.0234582424163818,
+      "off_p99_luminance": 8.612362003326416,
+      "actual_relative_loss_p99_in_geometry": 1.0
+    },
+    {
+      "light_id": 1,
+      "position": [
+        1.2,
+        -1.2,
+        1.5
+      ],
+      "eligible": true,
+      "casts_shadow": true,
+      "geometry_shadow_pixels": 3141,
+      "actual_shadow_pixels": 3684,
+      "overlap_pixels": 3085,
+      "geometry_coverage": 0.9821712830308819,
+      "shadow_iou": 0.8248663101604278,
+      "actual_to_geometry_loss_energy": 1.0233526229858398,
+      "off_p99_luminance": 8.611472415924075,
+      "actual_relative_loss_p99_in_geometry": 1.0
+    },
+    {
+      "light_id": 2,
+      "position": [
+        0.0,
+        0.9,
+        1.8
+      ],
+      "eligible": true,
+      "casts_shadow": true,
+      "geometry_shadow_pixels": 2664,
+      "actual_shadow_pixels": 2984,
+      "overlap_pixels": 2579,
+      "geometry_coverage": 0.9680930930930931,
+      "shadow_iou": 0.8403388725969371,
+      "actual_to_geometry_loss_energy": 1.0227450132369995,
+      "off_p99_luminance": 6.0203803300857555,
+      "actual_relative_loss_p99_in_geometry": 1.0
+    }
+  ],
+  "thresholds": {
+    "relative_loss": 0.02,
+    "normalized_loss": 0.005,
+    "min_shadow_coverage": 0.05,
+    "min_geometry_pixels": 64
+  },
+  "render": {
+    "resolution": 256,
+    "samples": 16,
+    "point_energy": 1000.0,
+    "gpu": {
+      "backend": "OPTIX",
+      "enabled": [
+        "NVIDIA GeForce RTX 2080 Ti"
+      ]
+    },
+    "saved_debug": false
+  }
+}

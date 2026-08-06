@@ -338,6 +338,25 @@ python3 scripts/convert_exr_dataset_to_png.py \
   --dry-run
 ```
 
+## LGI Map Generation
+
+Fixed-grid scene의 metric depth EXR, camera metadata, world-space light position으로
+각 유효 조명의 3-channel LGI map을 생성합니다. `depth.png`는 시각화용으로
+정규화되어 있으므로 입력으로 사용하지 않습니다.
+
+```bash
+python3 scripts/generate_lgi_maps.py \
+  --scene-dir outputs/final_objaverse_front2000_480_exr_s16_fixed32x4_hdri_ratio/scenes/scene_000043 \
+  --output-dir outputs/lgi_scene_000043_fixed32
+```
+
+각 `position_NNN.npz`에는 radian 단위 `lgi [3,H,W]`, `valid [H,W]`,
+`min_abs [H,W]`, `hard [H,W]`, camera/light 좌표가 저장됩니다. 기본 ray sample
+수는 16이고 hard candidate threshold는 5도입니다. `index.json`은 조명별 통계와
+Blender GT shadow 비교를, `hard_overview.png`는 전체 fixed-grid 결과를 담습니다.
+
+조명 하나만 확인하려면 `--position-id 0`을 추가합니다.
+
 ## Wan VAE Luminance Cache
 
 `scripts/precompute_wan_vae_cache.py`는 RGB PNG를 luminance로 변환하고 3채널로

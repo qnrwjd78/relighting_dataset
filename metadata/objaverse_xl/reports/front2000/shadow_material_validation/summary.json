@@ -1,0 +1,15 @@
+{
+  "schema": "objaverse_shadow_material_validation_v1",
+  "requested_scene_count": 357,
+  "result_scene_count": 357,
+  "pass_scene_count": 354,
+  "fail_scene_count": 1,
+  "inconclusive_scene_count": 2,
+  "error_scene_count": 0,
+  "worker_return_codes": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0
+  }
+}

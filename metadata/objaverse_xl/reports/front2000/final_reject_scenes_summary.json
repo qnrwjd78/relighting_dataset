@@ -1,0 +1,37 @@
+{
+  "schema": "objaverse_final_reject_scenes_v1",
+  "scene_range": [
+    0,
+    1999
+  ],
+  "sources": {
+    "material_shadow": {
+      "path": "metadata/objaverse_xl/reports/front2000/shadow_material_validation/material_shadow_reject_scenes.txt",
+      "count": 257
+    },
+    "reject_txt": {
+      "path": "metadata/objaverse_xl/reports/front2000/material_audit/reject.txt",
+      "count": 192
+    },
+    "manual_source_review_0000_0999": {
+      "path": "metadata/objaverse_xl/reports/front2000/manual_source_review_0000_0999.json",
+      "json_field": "combined_scene_ids",
+      "count": 136
+    }
+  },
+  "pairwise_overlap": {
+    "material_shadow_and_reject_txt": 42,
+    "material_shadow_and_manual_source_review": 20,
+    "reject_txt_and_manual_source_review": 0
+  },
+  "all_three_overlap": 0,
+  "provenance_combination_counts": {
+    "manual_source_review_0000_0999": 116,
+    "material_shadow": 195,
+    "material_shadow+manual_source_review_0000_0999": 20,
+    "reject_txt": 150,
+    "material_shadow+reject_txt": 42
+  },
+  "final_unique_count": 523,
+  "output": "metadata/objaverse_xl/reports/front2000/final_reject_scenes.txt"
+}

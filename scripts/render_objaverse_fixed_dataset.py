@@ -43,6 +43,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scene-config", default="configs/final_mask_dataset/selected_objaverse_seen_unseen.json")
     parser.add_argument("--source-root", default=None, help="Override source root from --scene-config.")
     parser.add_argument("--object-manifest", default=None, help="Render GLBs listed in this manifest without replay meta.")
+    parser.add_argument(
+        "--object-scene-list",
+        default=None,
+        help="Optional scene-id list selecting sparse rows from --object-manifest while preserving global scene ids.",
+    )
     parser.add_argument("--object-offset", type=int, default=0)
     parser.add_argument("--object-limit", type=int, default=None)
     parser.add_argument("--base-config", default="configs/tokenlight_synthetic_full_ratio3p5_cube1p6.json")
@@ -155,6 +160,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-area", type=int, default=24)
     parser.add_argument("--pad-radius", type=int, default=16)
     parser.add_argument(
+        "--shadow-loss-debug-position-id",
+        type=int,
+        default=None,
+        help="Also render this accepted position with subject shadow casting disabled.",
+    )
+    parser.add_argument(
+        "--shadow-loss-debug-top-k",
+        type=int,
+        default=0,
+        help="Render shadow-off debug passes for the K accepted positions with the largest geometry shadow masks.",
+    )
+    parser.add_argument(
         "--skip-completed",
         action="store_true",
         help="Resume an output shard by skipping scenes with a valid final meta.json.",
@@ -189,6 +206,10 @@ def parse_args() -> argparse.Namespace:
         parser.error(
             f"--object-mask-erode-radius must be nonnegative; got {args.object_mask_erode_radius}"
         )
+    if args.shadow_loss_debug_top_k < 0:
+        parser.error("--shadow-loss-debug-top-k must be nonnegative")
+    if args.shadow_loss_debug_position_id is not None and args.shadow_loss_debug_top_k > 0:
+        parser.error("--shadow-loss-debug-position-id and --shadow-loss-debug-top-k are mutually exclusive")
     if int(args.anchor_direct_lit_rank) < 1:
         parser.error(f"--anchor-direct-lit-rank must be >= 1; got {args.anchor_direct_lit_rank}")
     if args.fixed_upper_half_white_grid and len(args.power_values) != 4:
@@ -619,14 +640,29 @@ def selected_scene_specs(args: argparse.Namespace, root: Path) -> tuple[Path | N
             for line in manifest_path.read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         ]
-        offset = max(int(args.object_offset), 0)
-        selected = assets[offset:]
-        if args.object_limit is not None:
-            selected = selected[: max(int(args.object_limit), 0)]
         specs = [
-            {"scene_id": f"scene_{offset + index:06d}", "asset_path": path}
-            for index, path in enumerate(selected)
+            {"scene_id": f"scene_{index:06d}", "asset_path": path}
+            for index, path in enumerate(assets)
         ]
+        if args.object_scene_list:
+            scene_list_path = resolve_path(root, args.object_scene_list)
+            requested = {
+                scene_token(line.strip().split()[0])
+                for line in scene_list_path.read_text(encoding="utf-8").splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            }
+            available = {spec["scene_id"] for spec in specs}
+            missing = sorted(requested - available)
+            if missing:
+                raise RuntimeError(
+                    f"Object scene list contains {len(missing)} ids outside the manifest; first={missing[0]}"
+                )
+            specs = [spec for spec in specs if spec["scene_id"] in requested]
+        else:
+            offset = max(int(args.object_offset), 0)
+            specs = specs[offset:]
+            if args.object_limit is not None:
+                specs = specs[: max(int(args.object_limit), 0)]
         return None, specs
 
     config_path = resolve_path(root, args.scene_config)
@@ -1032,6 +1068,7 @@ def render_scene(
         ambient_source,
         args,
     )
+    shadow_loss_debug = None
     ambient_white_reference = None
     if args.shadow_mask_mode == "photometric" and args.ambient_subtracted_shadow_ratio:
         ambient_white_reference = mask_pipeline.render_ambient_white_reference(
@@ -1067,6 +1104,65 @@ def render_scene(
             "mask_stats": mask_meta["mask_stats"],
         }
         samples.append(row)
+
+    debug_lights = []
+    if args.shadow_loss_debug_position_id is not None:
+        debug_light = next(
+            (
+                light
+                for light in position_lights
+                if int(light["id"]) == int(args.shadow_loss_debug_position_id)
+            ),
+            None,
+        )
+        if debug_light is None:
+            raise RuntimeError(
+                f"Debug position_{int(args.shadow_loss_debug_position_id):03d} was not accepted"
+            )
+        debug_lights = [debug_light]
+    elif args.shadow_loss_debug_top_k > 0:
+        ranked_samples = sorted(
+            samples,
+            key=lambda row: (
+                -float(row.get("mask_stats", {}).get("object_shadow_clean_ratio", 0.0)),
+                int(row.get("light", {}).get("id", 0)),
+            ),
+        )
+        debug_lights = [row["light"] for row in ranked_samples[: int(args.shadow_loss_debug_top_k)]]
+
+    if debug_lights:
+        debug_rows = []
+        snapshot = mask_pipeline.mesh_shadow_snapshot(subject_objects)
+        try:
+            mask_pipeline.set_mesh_shadow_visibility(subject_objects, False)
+            for debug_light in debug_lights:
+                position_id = int(debug_light["id"])
+                debug_output = render_with_point_light(
+                    relight,
+                    scene_dir,
+                    f"debug_shadow_loss/position_{position_id:03d}_no_object_shadow",
+                    config,
+                    debug_light,
+                    [1.0, 1.0, 1.0],
+                    float(debug_light["power_scale"]),
+                )
+                debug_rows.append(
+                    {
+                        "position_id": position_id,
+                        "geometry_shadow_ratio": float(
+                            next(
+                                row["mask_stats"]["object_shadow_clean_ratio"]
+                                for row in samples
+                                if int(row["light"]["id"]) == position_id
+                            )
+                        ),
+                        "shadow_on": debug_light["primary"],
+                        "shadow_off": debug_output["primary"],
+                    }
+                )
+        finally:
+            mask_pipeline.restore_mesh_shadow_visibility(snapshot)
+        shadow_loss_debug = debug_rows[0] if args.shadow_loss_debug_position_id is not None else debug_rows
 
     anchor_sampling_meta = {}
     if not args.fixed_upper_half_white_grid:
@@ -1203,6 +1299,7 @@ def render_scene(
             "ambient_source": ambient_source,
             "comparisons": source_comparisons,
         },
+        "shadow_loss_debug": shadow_loss_debug,
         "common": {
             "pbr_maps": pbr_maps,
             "object_mask": object_mask_rel,
