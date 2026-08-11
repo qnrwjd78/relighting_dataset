@@ -386,6 +386,14 @@ python3 scripts/generate_lgi_maps.py \
 `valid.npy`, `min_abs.npy`, `hard.npy`, `camera_light.npz`, `preview.png`도 같은
 position 디렉터리에 저장하며 scene-level metadata는 `lgi_index.json`입니다.
 
+논문 입력에 필요한 세 LGI 채널만 작게 저장하려면 다음 옵션을 사용합니다.
+
+```bash
+--lgi-only --storage-dtype float16
+```
+
+scene id 구간은 inclusive `--scene-start`, `--scene-end`로 제한할 수 있습니다.
+
 ## Wan VAE Luminance Cache
 
 `scripts/precompute_wan_vae_cache.py`는 RGB PNG를 luminance로 변환하고 3채널로

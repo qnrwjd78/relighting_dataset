@@ -41,10 +41,23 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Store min/max/nearest and debug arrays as separate NPY files.",
     )
+    parser.add_argument(
+        "--lgi-only",
+        action="store_true",
+        help="Store only the paper's min/max/nearest channels (implies --channel-files).",
+    )
+    parser.add_argument(
+        "--storage-dtype",
+        choices=("float16", "float32"),
+        default="float32",
+        help="Storage dtype for LGI channels; computation always uses float32.",
+    )
     parser.add_argument("--num-ray-samples", type=int, default=16)
     parser.add_argument("--tile-rows", type=int, default=32)
     parser.add_argument("--hard-threshold-deg", type=float, default=5.0)
     parser.add_argument("--workers", type=int, default=1, help="Parallel scene workers in dataset mode.")
+    parser.add_argument("--scene-start", type=int, default=None, help="Inclusive minimum numeric scene id.")
+    parser.add_argument("--scene-end", type=int, default=None, help="Inclusive maximum numeric scene id.")
     parser.add_argument("--overwrite", action="store_true", help="Regenerate completed scene outputs.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop at the first failed scene.")
     parser.add_argument(
@@ -307,6 +320,8 @@ def generate_scene(
     verbose_lights: bool,
     channel_files: bool,
     index_filename: str,
+    lgi_only: bool,
+    storage_dtype: str,
 ) -> dict:
     scene_dir = scene_dir.resolve()
     output_dir = output_dir.resolve()
@@ -355,36 +370,43 @@ def generate_scene(
         if channel_files:
             position_dir = output_dir / stem
             position_dir.mkdir(parents=True, exist_ok=True)
+            lgi_dtype = np.dtype(storage_dtype)
             arrays = {
-                "min": result["lgi"][0],
-                "max": result["lgi"][1],
-                "nearest": result["lgi"][2],
-                "valid": result["valid"],
-                "min_abs": result["min_abs"],
-                "hard": result["hard"],
+                "min": result["lgi"][0].astype(lgi_dtype),
+                "max": result["lgi"][1].astype(lgi_dtype),
+                "nearest": result["lgi"][2].astype(lgi_dtype),
             }
+            if not lgi_only:
+                arrays.update(
+                    {
+                        "valid": result["valid"],
+                        "min_abs": result["min_abs"],
+                        "hard": result["hard"],
+                    }
+                )
             channel_paths = {}
             for name, array in arrays.items():
                 relative_path = Path(stem) / f"{name}.npy"
                 np.save(output_dir / relative_path, array)
                 channel_paths[name] = str(relative_path)
-            camera_path = Path(stem) / "camera_light.npz"
-            np.savez(
-                output_dir / camera_path,
-                intrinsic=intrinsic,
-                world_to_cv=world_to_cv,
-                light_world=np.asarray(light["world_position"], dtype=np.float32),
-                light_cv=light_cv.astype(np.float32),
-            )
-            preview_path = Path(stem) / "preview.png"
-            save_preview(output_dir / preview_path, result, stem)
-            sample_output.update(
-                {
-                    "channels": channel_paths,
-                    "camera_light": str(camera_path),
-                    "preview": str(preview_path),
-                }
-            )
+            sample_output["channels"] = channel_paths
+            if not lgi_only:
+                camera_path = Path(stem) / "camera_light.npz"
+                np.savez(
+                    output_dir / camera_path,
+                    intrinsic=intrinsic,
+                    world_to_cv=world_to_cv,
+                    light_world=np.asarray(light["world_position"], dtype=np.float32),
+                    light_cv=light_cv.astype(np.float32),
+                )
+                preview_path = Path(stem) / "preview.png"
+                save_preview(output_dir / preview_path, result, stem)
+                sample_output.update(
+                    {
+                        "camera_light": str(camera_path),
+                        "preview": str(preview_path),
+                    }
+                )
         else:
             npz_path = output_dir / f"{stem}.npz"
             np.savez_compressed(
@@ -399,7 +421,7 @@ def generate_scene(
             save_preview(output_dir / preview_path, result, stem)
             sample_output.update({"lgi_npz": npz_path.name, "preview": preview_path})
         gt_shadow_rel = sample.get("masks", {}).get("object_shadow_clean")
-        if gt_shadow_rel and (scene_dir / gt_shadow_rel).is_file():
+        if not lgi_only and gt_shadow_rel and (scene_dir / gt_shadow_rel).is_file():
             gt_shadow = load_binary_mask(scene_dir / gt_shadow_rel)
             sample_output["blender_gt_shadow"] = {
                 "path": gt_shadow_rel,
@@ -426,10 +448,13 @@ def generate_scene(
         "world_to_cv": world_to_cv.tolist(),
         "samples": output_samples,
     }
-    overview_filename = "lgi_hard_overview.png" if index_filename == "lgi_index.json" else "hard_overview.png"
-    save_hard_overview(output_dir / overview_filename, output_dir, output_samples, width, height)
     index["storage_layout"] = "separate_channel_npy" if channel_files else "compressed_npz"
-    index["hard_overview"] = overview_filename
+    index["storage_dtype"] = storage_dtype
+    index["lgi_only"] = lgi_only
+    if not lgi_only:
+        overview_filename = "lgi_hard_overview.png" if index_filename == "lgi_index.json" else "hard_overview.png"
+        save_hard_overview(output_dir / overview_filename, output_dir, output_samples, width, height)
+        index["hard_overview"] = overview_filename
     (output_dir / index_filename).write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     return {
         "scene_id": meta["scene_id"],
@@ -448,6 +473,13 @@ def discover_scenes(dataset_root: Path) -> list[Path]:
     return sorted(scenes, key=lambda path: (path.name, str(path)))
 
 
+def numeric_scene_id(scene_dir: Path) -> int:
+    try:
+        return int(scene_dir.name.rsplit("_", 1)[1])
+    except (IndexError, ValueError) as exc:
+        raise ValueError(f"Invalid scene directory name: {scene_dir.name}") from exc
+
+
 def output_is_complete(
     scene_dir: Path,
     output_dir: Path,
@@ -455,6 +487,8 @@ def output_is_complete(
     num_ray_samples: int,
     hard_threshold_deg: float,
     index_filename: str,
+    lgi_only: bool,
+    storage_dtype: str,
 ) -> bool:
     index_path = output_dir / index_filename
     if not index_path.is_file():
@@ -470,6 +504,8 @@ def output_is_complete(
         return (
             index.get("num_ray_samples") == num_ray_samples
             and math.isclose(float(index.get("hard_threshold_degrees")), hard_threshold_deg)
+            and index.get("lgi_only", False) == lgi_only
+            and index.get("storage_dtype", "float32") == storage_dtype
             and len(outputs) == len(expected)
             and all(
                 (
@@ -502,6 +538,10 @@ def main() -> None:
         raise SystemExit("--in-place writes to the dataset, so do not pass --output-root")
     if args.in_place:
         args.channel_files = True
+    if args.lgi_only:
+        args.channel_files = True
+    if args.scene_start is not None and args.scene_end is not None and args.scene_start > args.scene_end:
+        raise SystemExit("--scene-start must be less than or equal to --scene-end")
 
     selected_position_ids = tuple(args.position_id) if args.position_id else None
     if args.scene_dir:
@@ -517,6 +557,8 @@ def main() -> None:
             True,
             args.channel_files,
             "index.json",
+            args.lgi_only,
+            args.storage_dtype,
         )
         print(f"Wrote {result['position_count']} LGI maps to {output_dir}")
         return
@@ -529,8 +571,13 @@ def main() -> None:
     ).resolve()
     scene_index_filename = "lgi_index.json" if args.in_place else "index.json"
     scenes = discover_scenes(dataset_root)
+    if args.scene_start is not None:
+        scenes = [scene for scene in scenes if numeric_scene_id(scene) >= args.scene_start]
+    if args.scene_end is not None:
+        scenes = [scene for scene in scenes if numeric_scene_id(scene) <= args.scene_end]
     if not scenes:
-        raise SystemExit(f"No scene_*/meta.json found below {dataset_root}")
+        requested_range = f" in requested range {args.scene_start}..{args.scene_end}"
+        raise SystemExit(f"No scene_*/meta.json found below {dataset_root}{requested_range}")
     output_root.mkdir(parents=True, exist_ok=True)
 
     completed = []
@@ -546,6 +593,8 @@ def main() -> None:
             args.num_ray_samples,
             args.hard_threshold_deg,
             scene_index_filename,
+            args.lgi_only,
+            args.storage_dtype,
         ):
             skipped.append(scene_dir.name)
             continue
@@ -560,6 +609,8 @@ def main() -> None:
                 False,
                 args.channel_files,
                 scene_index_filename,
+                args.lgi_only,
+                args.storage_dtype,
             )
         )
 
@@ -604,6 +655,10 @@ def main() -> None:
         "hard_threshold_degrees": args.hard_threshold_deg,
         "selected_position_ids": list(selected_position_ids) if selected_position_ids else None,
         "storage_layout": "separate_channel_npy" if args.channel_files else "compressed_npz",
+        "storage_dtype": args.storage_dtype,
+        "lgi_only": args.lgi_only,
+        "scene_start": args.scene_start,
+        "scene_end": args.scene_end,
         "in_place": args.in_place,
         "completed": sorted(completed, key=lambda item: item["scene_id"]),
         "skipped": sorted(skipped),

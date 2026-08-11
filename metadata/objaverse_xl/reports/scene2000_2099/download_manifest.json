@@ -1,0 +1,802 @@
+[
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4ee58f7bf0054c5499a7f766fc7d84f8",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-118/4ee58f7bf0054c5499a7f766fc7d84f8.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a7eff239ef803c0abb41388b1794c2f857bf925f38deaeb5d3684f548e4466b2"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/d4ca1a1cc4fc4aea9df617054eae4378",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-154/d4ca1a1cc4fc4aea9df617054eae4378.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "86a18679d774f32cfd151b36f301d6172f72e6e667c15f04b8add3dd10874058"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/769596ba3d3a40eb97a7927bc47c2b35",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-086/769596ba3d3a40eb97a7927bc47c2b35.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "27acd20e9f6e8e97d9a9713c6718e80e346908b27cbe041a3d1abbd4808bc644"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/c8222fc7d33644d2b133cb6d13c8e461",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-119/c8222fc7d33644d2b133cb6d13c8e461.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "9745fb6395b5b11a138851f039a1da86eb8125f549b733c17f4fc28979c4acfc"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/fd7ca12b0a904a7d86ea2f7d3973afd3",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-008/fd7ca12b0a904a7d86ea2f7d3973afd3.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "145c069436681d5399e9c83172b25ab85aa208cd655d745e010d7899d6c45854"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/cd926625c81244209e33bd8ad936d084",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-123/cd926625c81244209e33bd8ad936d084.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "807cb364ecc478d9c02b73bfeb761d3a7b77f17d671e2db944f443481a3e7544"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/6e16414ddbde443b9b8ed815b17e9930",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-023/6e16414ddbde443b9b8ed815b17e9930.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "b78816cc9e0f5d6e2e204d58bf57f30d3b2c514952ca4566964b36b712212d2b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4aaa38c0308c4280ac0d162c1af9514d",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-156/4aaa38c0308c4280ac0d162c1af9514d.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "7a94130416bb01f4eadb00f6703c892751ff1157c50420429200b5be6949f751"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4a8228dee4f74585b673acef407c59b3",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-100/4a8228dee4f74585b673acef407c59b3.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "463edd01717a426329f5d64ca3c866ffbf186b1ba5383f06d89dc64bfe6f042d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/bf34b37142544ff8ae643c0190b27dbe",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-046/bf34b37142544ff8ae643c0190b27dbe.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "3d236647d6301073b827409b7151548fde2b944d6c37e94e9fbddb9cefefb26d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1bea822f4c284aa584bde94bed489234",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-012/1bea822f4c284aa584bde94bed489234.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "03e62e24bd80f8cbcb73957b794713cae600daac71cf44f275f06d36444b007a"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/54e4d77b41e0407ba08dac83b30e855c",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-136/54e4d77b41e0407ba08dac83b30e855c.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "8aae57e205bae2272a507785ccc33580df76a65e31cd29d37a7a6eacff70e359"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/98d057e20eef4cfdad5e696ac133979e",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-069/98d057e20eef4cfdad5e696ac133979e.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "f6179c4caada7f32a046c6b1c5769c09e3c6849a4d275ee91c391d810679330d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/86e0fb21f564469f96549e3f7393395e",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-110/86e0fb21f564469f96549e3f7393395e.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "425049dc531a47bfa37d309d119773e7d345b7594e176d63bdae7bf0c134b32e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/ee0732f7253d49ecbc69934ff8aaf1c7",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-147/ee0732f7253d49ecbc69934ff8aaf1c7.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "f14354768e08d98df4a9fb843d3ef22d067198c630c140c0d4df5a61b72b338c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/179a36b35cd148948e36ebd3d983ec88",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-088/179a36b35cd148948e36ebd3d983ec88.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "403d49e88bfca994c73dced90852d71fdde8d7d15279bc5de0dc883c53f1a5ae"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/594c2a3147484c529e161742b5b0b135",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-019/594c2a3147484c529e161742b5b0b135.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "7f6e5a99f88db5d6feff3a18a0c259f20f4f6040f135fb40a8a6ae76241abead"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/2123888cf474412881859c33829507b7",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-041/2123888cf474412881859c33829507b7.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial",
+    "sha256": "f5c3a1bb3803d9d1311aa8bafac660f3479d836ab70efbc17942e2bd1fde04de"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/928bf29a00354054b46f19f3dce151da",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-123/928bf29a00354054b46f19f3dce151da.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "084969f7d7d1a31611c02d45545fbef4c2ab874d3467c6401c11b77b77af0eac"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3b1c85cfe5b247c9956eb6ba38f9e666",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-137/3b1c85cfe5b247c9956eb6ba38f9e666.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "5318da16637bea4bde10cca0152b245c0be2ead38e73a2a68a7f55c63ce56d9d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3ad582d2dc9e4cc3b0a74811fd5b67e8",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-110/3ad582d2dc9e4cc3b0a74811fd5b67e8.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "8953f047d23008a0a50617d32ff1df892b5bbe7ed767cb4baa8691acf5621db0"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/292cfa81a00048a2a1660d0e631b1635",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-142/292cfa81a00048a2a1660d0e631b1635.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "8a7bb94f87c44b64fd3b2993605392e817361a7b45d701bff4e9425c08db3c60"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/f3eabd7055594689beca8f8f171bed29",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-155/f3eabd7055594689beca8f8f171bed29.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "da3a6ae813a7fe38b8c7be31357e98868b52833bd58373777ab12c6e93d64d2e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3bc142dddd504c75bcfc7e2d067ff729",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-137/3bc142dddd504c75bcfc7e2d067ff729.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "29381ac6cafa8c86e9982a511a782ec78289a38556594ac47da13980c99c89e6"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/eeb4fe82421942e4be7f33eb4c8d193b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-132/eeb4fe82421942e4be7f33eb4c8d193b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a83b11f9e494d64254b988d05aa25aee33bad82f3574a5b7a5afd54bfa7da5a0"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4304c9d50ce44dde95b95589c91a4211",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-072/4304c9d50ce44dde95b95589c91a4211.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "6da0f7a8b11c370457d134ddc978775b4e3c18d20d6a340cd240ef19700ec33c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/462e5f35fd9d467fb9ac7abc2dd80d04",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-094/462e5f35fd9d467fb9ac7abc2dd80d04.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "72ea16581dd030c0dc2c985be9a36d13cea46e806c6f38111accf86758dacb0d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/afc83446f33740ff805bdc6ab9ddbd07",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-032/afc83446f33740ff805bdc6ab9ddbd07.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "c1f1a81b4ead1e58a40c470f54e1cae2a7f064f60dba924cbb4b4d094b663800"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/eef3bd8d77ec4b92834e730927b7be12",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-021/eef3bd8d77ec4b92834e730927b7be12.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "da3d719f9ea7a4d2ccef0097ec1c14f870eda02d0ecb97f5fbefaab08f936cd1"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/0dfc7c5654e945daac9bd0ab195b24ee",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-063/0dfc7c5654e945daac9bd0ab195b24ee.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "177d5de712c0e3d613779ab8a93215793006751d0619111646b33977de21a781"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/9014216b55bf45b589bf6bff5892b95b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-097/9014216b55bf45b589bf6bff5892b95b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "0dd2a8dd0b76f83c31f09cf71aa56d3781b3d3e1dca7f52dd04006af6fa11c27"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/d193887f6151412f92f33ac3ef91f783",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-075/d193887f6151412f92f33ac3ef91f783.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "48b3bb98e229c11f37f2faa29649fa9f56bf3aac8e7d3885948e63603b7b93db"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/67066de38e1a429792eafdb84ebbb34b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-041/67066de38e1a429792eafdb84ebbb34b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "b415cce2d4eccb7c8c5de06bf0a6cee5c38e88c63c89dad9f104b33200a4016b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/28e28d3a18c4429e872c0970f4f57650",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-155/28e28d3a18c4429e872c0970f4f57650.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "492eeff20d818b370b8dcd87ddbac7f974a1623430991bbdb49bd9b3108de453"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3975c389f4774c8f80a328ffdf419f74",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-137/3975c389f4774c8f80a328ffdf419f74.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "be0a28171c5a8aa9ac8689337472279a2186a0b7b03bd1d2a70a0520e7706a18"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/20ad7767b65b40499e33866fa3762d42",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-078/20ad7767b65b40499e33866fa3762d42.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "7ef832c4b0a6f3475bbf15b1019be8de68a388e937788a1ab8996cf8c35023aa"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/da8ba43e7ebd4f7bb715ce70951d3235",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-151/da8ba43e7ebd4f7bb715ce70951d3235.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "10342cf2910653831b78b78663620f25500b9fb4a026cb5121cc1be9563b2728"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/621cceadac024b498ef7047e958cc336",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-157/621cceadac024b498ef7047e958cc336.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "b4b6a1e4b4974ce8d1f04bb2ae2a7b54986cdc8e951a685d752c7046db9ba86b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/d87fff4c053b457b9f3d6462ba5a42ab",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-062/d87fff4c053b457b9f3d6462ba5a42ab.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "d379d7df5e3079e568cd4423c8ce883a65f8da6b0313c163409f99a594669d89"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/dfe34dcbae4e4201845297503b8c0f47",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-012/dfe34dcbae4e4201845297503b8c0f47.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "652333c23025565ca3a93785c698641217459f0d6266293fab94d19cf1c842b8"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/47148b3c324c441ab31357a65f794135",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-151/47148b3c324c441ab31357a65f794135.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "049b0e9886ff7f738704ed0099dec81fc9ee69165e4572b56c43db63208578fa"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/a8e191a5bbef43acad5be450a7f7ab11",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-154/a8e191a5bbef43acad5be450a7f7ab11.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "2fdc5abea1692b8586e15c25de43fb7110eeb6d82f2a6de88c812d8385c23b4e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/ccccdd670c96478a99b6b2986bf80d45",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-119/ccccdd670c96478a99b6b2986bf80d45.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "3300d52d48d864cf99e6e8360e6d77b8ec644ad76f3c8efb77b08fd6214cc38e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/0a57506a649c40fab334c923d27d951a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-153/0a57506a649c40fab334c923d27d951a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "1a9f26944a401d7e46eef2f6e34f091de25cfda190e4f6e13a8c414306851d53"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/2d21bdc435f349589a7031b36cd69e8c",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-118/2d21bdc435f349589a7031b36cd69e8c.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Share Alike",
+    "sha256": "beb6eb5d431412919fce0beb72beedfcd3e293520ec1cb1fbf049769715e9aea"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/cfbf848b311747bca0e7e806f6d7fffb",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-034/cfbf848b311747bca0e7e806f6d7fffb.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "4b4d0b9ff7d014814a8f38572387b1408ab881f7d57062173049777419b98994"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/9d2e1796b10e48fda5b8013e5c144766",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-117/9d2e1796b10e48fda5b8013e5c144766.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "9cb1e4d57b0c3a845979fcd29104d0baa167dc2de270e94bce852204c5dfb4ed"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/c77fec53853a425e84226193dcab3eaf",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-156/c77fec53853a425e84226193dcab3eaf.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "243842d2392f6f917ef20d49087d257039553a3f30e4e4699a4d9bd4c6f2742d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/8aa3ea3f77884187b9368e9aafd9f134",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-001/8aa3ea3f77884187b9368e9aafd9f134.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "bed964aecc98becb85bfd6d4f8e93866d6128c9a2e56a3ee3280093ace0c4299"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/b9d8e86fbfc84327be1e8a58fa1f3d33",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-035/b9d8e86fbfc84327be1e8a58fa1f3d33.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "1bd5b22c0ef85f8b887ca210db8babd97503256224cfe980834040dc9041d9ea"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/eec4bd47f0264f7c85cae27efffee5a6",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-093/eec4bd47f0264f7c85cae27efffee5a6.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "2e9568ef77a817e715d10fee8546e288f0465d1d925eca85ec9d398cbf8b531e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/aa6530e853dc43ce88037e469e0d4607",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-150/aa6530e853dc43ce88037e469e0d4607.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "cc18713d0d77b4cd44110fc58ea3308b8681f430e674e49a69d68b5171f3f99d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/43bcba64950045d586fd571b46b573f5",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-072/43bcba64950045d586fd571b46b573f5.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "86325e8dbe79b4fadd84f91408043dcc98d515cb45c540b70a11a1cbf15312a8"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/fb13394bdaf94bda9dca3fcac69e5b04",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-078/fb13394bdaf94bda9dca3fcac69e5b04.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "05ae79fb7e4db0a321b094885fb11759d683831e9a9109d1d34a84768c4f06c2"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/368b27631a1446928a5f10cfc33d31d1",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-068/368b27631a1446928a5f10cfc33d31d1.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "8855692f7a5ca7639496beea8ffe1b3acd590eeddedcc2025058bee63d51c432"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/212726a4c9784b0082f70b75b7cbd5a3",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-140/212726a4c9784b0082f70b75b7cbd5a3.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "1c7025e07ad5c3e1bb943fa11b9445db0e35ff84356ed8c4b715c1d0f425bc3c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4a7ae91e36f142f2a2ff1245a212c6b5",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-114/4a7ae91e36f142f2a2ff1245a212c6b5.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "c1798755ed47306f407fc43c5677c18b46eb3f9eb5a35ddcd87888814a5b693d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/eae4284ffbde468fbed36c40700d5e9a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-063/eae4284ffbde468fbed36c40700d5e9a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a2b77bab64cccf8ab419b155c21a6be7e16c56034500338aa98631b0e9202233"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/fd34becf84de47c2b9335e24c6bba0f2",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-159/fd34becf84de47c2b9335e24c6bba0f2.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a186e6f60c76f5249cd36f6dbc3bd4374dae73b85f761f5b1a099e96abc7a8ed"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/564eb41cdcea40518a2094c4ec6d2e20",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-111/564eb41cdcea40518a2094c4ec6d2e20.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "51262bab317b9aacd177257f9e9b1c1af1de3092f0f2ff145186eac08bc7380c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/9caab91f55644841b236b7c8ae5bd09e",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-051/9caab91f55644841b236b7c8ae5bd09e.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a63c09996544d675dfd287e467f2cfb7dcd705377efeed25a1164918e49ebe5b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/64a5f1eed2d442f58a3a08254f56db8d",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-014/64a5f1eed2d442f58a3a08254f56db8d.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "f5ad828dd3552815a69692c622f81aac1ee4af8498250f3df537cf9807fa58af"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1269d6b98cec49ceb7d1fd7bc5c3a52a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-066/1269d6b98cec49ceb7d1fd7bc5c3a52a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "669aa1801266015180e50074ede625155de9d3203f2296d7e6647af7624d9514"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/8a789071d824453a85328e487385e504",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-085/8a789071d824453a85328e487385e504.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "d26047ebf90008826f3119e858bc4400d9a43306ab25450815c98713f80240e0"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/31f9f793011b43e38ce9421298f90b80",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-132/31f9f793011b43e38ce9421298f90b80.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "aa9277ab0f652279e8029858353d60933c64cd60d3fac0523dd5231942bd5855"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/bc33fab9fdf54548b498176ddc6a36c8",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-024/bc33fab9fdf54548b498176ddc6a36c8.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "88cdaf3e75682a378190c1d9f26b51ef12a354ef7b222eadec39abff8709395c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/ca00483b23cf4fb68978b81bc073a99c",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-057/ca00483b23cf4fb68978b81bc073a99c.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "4fdd641f6b3de995211678637aeac1243634412227c9ba59892c195f97c60c8d"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/6756b93904ae4a888de01f96b4279bbf",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-052/6756b93904ae4a888de01f96b4279bbf.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "7fdf316091fd0a496de15693e85ff0916dcda891d8dd4405f69cf85861174c1c"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/9d89aae6a7c84bbc97c63c06055ecedd",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-050/9d89aae6a7c84bbc97c63c06055ecedd.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "20817a35bb6979c17cabc898f2830408576e3d74a1df75722213b0f44803f1ac"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/a733987950304cfe86336f74f5bcb6d2",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-028/a733987950304cfe86336f74f5bcb6d2.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "1972c111d7553e042f1508ab775e962d4b9407986f5e3d09d20584c82698175e"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4c545bd4e969493d909e717c14927cfa",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-005/4c545bd4e969493d909e717c14927cfa.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "b4bfd1ee9134c534a97344eea580099ea8b2e789de73581666e1ae7998b29d58"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/8567ec65cc5f44fa83b0d43c30e53d67",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-068/8567ec65cc5f44fa83b0d43c30e53d67.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "14a5d621c6f49907f31525125f8fef7258c06d204139b1fb413a9c7f9532bc61"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/f532bf1320d94bddbd2985a3b691390a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-038/f532bf1320d94bddbd2985a3b691390a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "e647d375838e4b57b2c8ca0c659d5bed22055fe0f5ec4da11b8cb6c561a70383"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/91c7f3eacb1f4263984c210ae5a1e75b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-070/91c7f3eacb1f4263984c210ae5a1e75b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "cc78c5ed1e766de5eab35e8f67554f167c0acd4000fa75e2ccbde257282c58c8"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/18666be102254b479c21dab05c79deb4",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-136/18666be102254b479c21dab05c79deb4.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "c67ceacea3949c096f8da10425e7c97f838a33026c6fc48ea1d1ffd308c7b43f"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/15d00d76890d458ea454d34ce08cbda5",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-072/15d00d76890d458ea454d34ce08cbda5.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "941de8fbdaef888be7c2b35315eaa1a8adbf802274cca304219f8b310acfe602"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1b736746f79e489ead3a24eb13e516cd",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-020/1b736746f79e489ead3a24eb13e516cd.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "b52e051ac798ba350bf1569646aa7c1a3f54b38b67b089fa2e2f5d84684b417a"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/81ea8c1314fc4517995b7ce5218c676d",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-020/81ea8c1314fc4517995b7ce5218c676d.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "a5921d2f8f9b492a2157eaa3effd5c9855898fedc813841c2d6693e2ebe29f92"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/0738bdf0011949a3aa2924cfb6d9bdb7",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-138/0738bdf0011949a3aa2924cfb6d9bdb7.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "2d88025bad6d83f816e0ae744aae6aed45d000aecb4fc1eb6f6c265d22362d93"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/df894b66e2e54b558a43497becb94ff0",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-151/df894b66e2e54b558a43497becb94ff0.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "f1cd6f5ee9947a6de3e43a76feb25c059c785aa0fecc40191f56ebd0a3964432"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/54663686326a473ba36e7abec8b26240",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-053/54663686326a473ba36e7abec8b26240.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "0f00f0156217f0e53fb09abe50a24ab06dc0c090dca97c51ae06b40536702519"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/37c5dad4f2544979a618716da703373b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-151/37c5dad4f2544979a618716da703373b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "5f5dfe7dcdca54ef4b2c3bf75f6cf3b47cf060f84c5de01dbc9180c2660dcc25"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3813b360676244ac89879f6b922e1df4",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-042/3813b360676244ac89879f6b922e1df4.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "4290afacf2d66df89490c459870baeffe01a5eb10c78fe5f9419107bf29a970b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/6d605b21c14545ef8c3613f337b678c1",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-155/6d605b21c14545ef8c3613f337b678c1.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "9ca13696aec555290436220366f4d81826e10972284a2b1760de07c257340cb0"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/29834e136dda40b3901f0635115e9206",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-147/29834e136dda40b3901f0635115e9206.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "8db2f9e87d1f4cc972afe7f6de121059814cede4594b66b2b4b3a48949358f8f"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/05d94922904340afb9693059004a992f",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-017/05d94922904340afb9693059004a992f.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "25a34d77bbc5e54ebc2bbf87e9ac974604bf65fc68a962a5a10f9a5cc3c83e5b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/17d958dc9bb74c5f92245b84ebe0ba70",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-112/17d958dc9bb74c5f92245b84ebe0ba70.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "91ab6d83f74ad7274a642da8036a7ac552edb51e6419e6ab44ec6f645734fa5f"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/48affbe539e34eb3965da55a4df62a2c",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-154/48affbe539e34eb3965da55a4df62a2c.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "814beaef8149b0b5dc2d806b14ff7a77ffa1ff112c0a079c0b3206b05cabcdd9"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/4060318ffe71411494816f5a3dacab8d",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-121/4060318ffe71411494816f5a3dacab8d.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "c943a9f52441f504aad392283ccdfe9adc3ef2f836822b99cfb341ffd38185c9"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/7b2c56e6fffa4aafaf90a9e3bb2d4345",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-022/7b2c56e6fffa4aafaf90a9e3bb2d4345.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "09ecc5bc4e3d806d50563a099b223fe36a5b914c87e0ea088a01a1e3c1ccd938"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/bc2bd9e5cadc441aa77a2f4a3cce5171",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-015/bc2bd9e5cadc441aa77a2f4a3cce5171.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "980a3f7455f20cfc62879c8936854e7fb9158826340822c5bb6795e8f97f923b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/a32d29b26c5e41daad78357a07a50040",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-109/a32d29b26c5e41daad78357a07a50040.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "221bf9ac48924837551d972ec55228c3be33fcb8cf55d3dbbe5e6d2424047746"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/c3831a59d565490a9eda75d4ccef05f1",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-154/c3831a59d565490a9eda75d4ccef05f1.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "f09a6c326c8d2e6457c27690ce4a69253e55ed10f045d4a06a073c9b9d6d210b"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1e49f74b6d6940f1a6af39168b636a1a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-093/1e49f74b6d6940f1a6af39168b636a1a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial",
+    "sha256": "6f6bb8cf9ea093d8e164cc203a6a211bca467274c1507610b2e287bebfef8821"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/5f3b0fdba3ff408fab5456127632a5d7",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-054/5f3b0fdba3ff408fab5456127632a5d7.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution - Non-Commercial - Share Alike",
+    "sha256": "8bb3f2f5e8d6b620b6dcafe7005274886d547822f7e377193d5f3c4007b4e556"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/3beeafa970304cb7ab97b496b34b7b4a",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-016/3beeafa970304cb7ab97b496b34b7b4a.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "26972e7f4016ecf3cfde074ee6c8a6ad9a01a3c15a60b9604e1f0b502a5c26ab"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1a149be991c14025a6af4a11e8ed84a2",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-125/1a149be991c14025a6af4a11e8ed84a2.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "c562e11567f876dda847a20b733ab88e4c9fb77c1cb554e9ac5c7a7a5be79e08"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/1935902c177542aaa8dcf5f0e40a4305",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-081/1935902c177542aaa8dcf5f0e40a4305.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "45fe2d37f47d671cc74cb71a319141c9dd8e16f414854f16be44181db2f58c58"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/e47d45632b8e416f866e9b490e5fc478",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-056/e47d45632b8e416f866e9b490e5fc478.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "0b657672d342e082e399f2cc1a7ca2ef1495685317280d35605e7ff0328dcd9a"
+  },
+  {
+    "fileIdentifier": "https://sketchfab.com/3d-models/b1d70a52503a4fb78e166a5a26d1de1b",
+    "local_path": "/workspace/data/objaverse_xl/hf-objaverse-v1/glbs/000-063/b1d70a52503a4fb78e166a5a26d1de1b.glb",
+    "source": "sketchfab",
+    "fileType": "glb",
+    "license": "Creative Commons - Attribution",
+    "sha256": "98bb20fecc098d12a3d83f976ee24412da07853c6a1840646da9f17e8385138d"
+  }
+]
