@@ -818,6 +818,7 @@ def choose_valid_lights(
             candidate = relight.sample_random_point_candidate(pr, rng, spatial, final_positions, "random_refill")
         p_can = [float(v) for v in candidate["canonical_position"]]
         power_scale = float(candidate.get("power_scale", args.default_power_scale))
+        render_color = [float(v) for v in candidate.get("render_color", [1.0, 1.0, 1.0])]
         p_world = relight.canonical_to_world(p_can, camera, config, center)
         world_radius = float(args.radius) * world_scale
         geom_valid, skip_reason = relight.point_inside_receiver_bounds(p_world, receiver_bounds, world_radius)
@@ -841,7 +842,7 @@ def choose_valid_lights(
                     attempt_base,
                     config,
                     light_meta,
-                    [1.0, 1.0, 1.0],
+                    render_color,
                     power_scale,
                 )
                 accepted, validation_stats = relight.validate_point_light_component(scene_dir, output, valid_filter)
@@ -857,7 +858,7 @@ def choose_valid_lights(
                 rel_base,
                 config,
                 light_meta,
-                [1.0, 1.0, 1.0],
+                render_color,
                 power_scale,
             )
             light = {
@@ -870,9 +871,12 @@ def choose_valid_lights(
                 "world_radius": world_radius,
                 "canonical_energy": float(args.base_energy),
                 "canonical_radius": float(args.radius),
-                "render_color": [1.0, 1.0, 1.0],
-                "component_color": [1.0, 1.0, 1.0],
+                "render_color": render_color,
+                "component_color": render_color,
                 "candidate_source": candidate.get("candidate_source"),
+                "light_variant_id": candidate.get("light_variant_id"),
+                "light_config_source_task": candidate.get("light_config_source_task"),
+                "light_config_source_name": candidate.get("light_config_source_name"),
                 "grid_cell": candidate.get("grid_cell"),
                 "grid_resolution": candidate.get("grid_resolution"),
                 "validation": validation_stats,
@@ -889,7 +893,11 @@ def choose_valid_lights(
                 "grid_cell": candidate.get("grid_cell"),
                 "grid_resolution": candidate.get("grid_resolution"),
                 "position_id": candidate.get("position_id"),
+                "light_variant_id": candidate.get("light_variant_id"),
+                "light_config_source_task": candidate.get("light_config_source_task"),
+                "light_config_source_name": candidate.get("light_config_source_name"),
                 "power_scale": power_scale,
+                "render_color": render_color,
                 "canonical_position": p_can,
                 "world_position": [float(p_world.x), float(p_world.y), float(p_world.z)],
                 "valid": accepted,
