@@ -27,7 +27,11 @@ def parse_args() -> argparse.Namespace:
         description="Cache Wan2.2 VAE latents from source and sample PNG images."
     )
     parser.add_argument("--dataset-root", required=True, help="Dataset containing scenes/scene_*/meta.json.")
-    parser.add_argument("--ckpt-dir", required=True, help="Directory containing Wan2.2_VAE.pth.")
+    parser.add_argument(
+        "--ckpt-dir",
+        default="weights/Wan2.2-TI2V-5B",
+        help="Directory containing Wan2.2_VAE.pth (default: weights/Wan2.2-TI2V-5B).",
+    )
     parser.add_argument("--vae-path", default=None, help="Explicit Wan2.2_VAE.pth path.")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--resolution", type=int, default=480)

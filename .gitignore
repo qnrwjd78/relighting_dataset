@@ -3,6 +3,27 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# Local Python environments and package caches
+.venv/
+.venvs/
+.moge3_env/
+miniconda3/
+
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+*_key.txt
+*_token.txt
+
+# Local datasets, generated archives, and vendored dependencies
+source_images/
+third_party/
+weights/
+*.tar.zst
+*.tar.zst.sha256
+
 data/
 outputs/
 external/
@@ -20,4 +41,3 @@ logs/
 /download/
 donwload/
 \\\\sequenceBallsMiniShowroom/
-hf_token.txt

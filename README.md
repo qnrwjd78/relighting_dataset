@@ -27,6 +27,24 @@ outputs/                            preview 이미지와 최종 렌더 결과
 
 모든 다운로드와 렌더 명령은 Docker 안의 `/workspace`에서 실행합니다.
 
+저장소를 처음 받을 때 MoGe submodule도 함께 초기화합니다.
+
+```bash
+git clone --recurse-submodules https://github.com/qnrwjd78/relighting_dataset.git
+cd relighting_dataset
+
+# 이미 clone한 저장소라면
+git submodule update --init --recursive
+```
+
+MoGe 소스는 `repos/MoGe`의 고정 커밋을 사용합니다. 새 Python 환경을 만들 때는
+해당 소스를 설치한 뒤 가중치를 받습니다.
+
+```bash
+python3 -m pip install -e repos/MoGe
+./scripts/download_weights.sh
+```
+
 ```bash
 docker exec -it jaeho_relight_dataset bash
 cd /workspace
@@ -199,6 +217,21 @@ python3 scripts/render_objaverse_fixed_multi_gpu.py \
 현재 설정은 launcher 기본값이므로 위 명령만으로 object 크기 `0.6~0.9`, rig 기준 `1.2`, canonical world scale `0.75`, `480x480`, 16 samples, EXR, fixed 32개 흰색 point light와 네 power를 사용합니다. 재실행하면 정상 `meta.json`이 있는 scene은 자동으로 건너뜁니다. 처음부터 다시 렌더링하려면 `--no-resume`을 추가합니다.
 
 Launcher는 내부적으로 `CUDA_VISIBLE_DEVICES`로 각 process에 GPU 한 장만 노출하고 Blender worker에는 `--gpu-devices 0`을 전달합니다. 완료 후 output root의 `dataset_manifest.json`에 전체 성공, 실패, 누락 수를 기록합니다.
+
+7x7x5나 10x10x5처럼 grid 크기를 바꾸는 경우 별도 renderer 파일을 복제하지 않고
+공통 grid launcher를 사용합니다.
+
+```bash
+python3 scripts/render_objaverse_fixed_grid_multi_gpu.py \
+  --grid-size 7x7x5 \
+  --grid-power-scale 0.6 \
+  --gpus 0 1 2 3 \
+  --object-count 1000 \
+  --output-root outputs/fixed_7x7x5
+```
+
+`--grid-size 10x10x5`로 바꾸면 동일한 코드로 10x10x5 grid를 렌더링합니다.
+`--scene-id-min`과 `--scene-id-max`로 sparse scene list의 ID 범위를 제한할 수 있습니다.
 
 조명 감쇠와 무관한 object-only geometry shadow/direct-lit mask를 사용하려면 다음 옵션을 추가합니다. `object-mask-erode-radius 1`은 direct-lit 계산에서 object 경계를 안쪽으로 1px 줄이고, `min-area 0`은 작은 component를 제거하지 않으며, `pad-radius 2`는 shadow 경계만 작게 확장합니다. Geometry mode는 mask용 white render를 만들지 않습니다.
 
@@ -394,58 +427,51 @@ position 디렉터리에 저장하며 scene-level metadata는 `lgi_index.json`�
 
 scene id 구간은 inclusive `--scene-start`, `--scene-end`로 제한할 수 있습니다.
 
-## Wan VAE Luminance Cache
+## Wan VAE Cache
 
-`scripts/precompute_wan_vae_cache.py`는 RGB PNG를 luminance로 변환하고 3채널로
-복제한 뒤 Wan2.2 VAE encoder에 넣습니다. Scene마다 `source_latent`와
+`scripts/precompute_wan_vae_cache.py`는 RGB PNG를 Wan2.2 VAE encoder에 넣습니다.
+`--image-transform rgb`가 원본 RGB를 유지하며, `luminance`를 선택하면 휘도를
+3채널로 복제합니다. Scene마다 `source_latent`와
 `sample_latents`를 하나의 `.pt` 파일로 저장합니다. 현재 fixed renderer의
 `meta.json` 구조와 예전 `samples_manifest.json` 구조를 모두 지원합니다.
 
-Wan encoder 코드는 `scripts/wan_vae2_2.py`에 포함되어 있습니다. 전체 Wan 모델 대신 VAE encoder weight 하나만 다운로드합니다.
+Wan encoder 코드는 `scripts/wan_vae2_2.py`에 포함되어 있습니다. MoGe-3와 Wan VAE
+가중치는 저장소 최상위 `weights/`에 통합하며 다음 명령으로 다운로드하고 SHA-256을
+검증합니다.
 
 ```bash
-python3 -m pip install -U "huggingface_hub[cli]"
-hf download Wan-AI/Wan2.2-TI2V-5B Wan2.2_VAE.pth \
-  --local-dir data/weights/Wan2.2-TI2V-5B
+./scripts/download_weights.sh
 ```
 
-공식 weight SHA-256:
+가중치 경로:
 
 ```text
-20eb789667fa5e60e7516bf509512f6cb61f01b0aa0695eadaea930c13892b36
+weights/moge-3-vitg/model.pt
+weights/Wan2.2-TI2V-5B/Wan2.2_VAE.pth
 ```
 
-Fixed PNG dataset을 GPU 네 장으로 luminance cache 처리합니다.
+Fixed PNG dataset을 GPU 네 장으로 RGB cache 처리합니다. 반복되는 GPU 실행,
+검증, 압축은 통합 pipeline이 담당합니다.
 
 ```bash
-DATASET=outputs/front2000_fixed32_size09_texture_png
-CACHE=outputs/front2000_fixed32_size09_texture_wanvae_luminance_480_cache
-
-PIDS=()
-for GPU in 0 1 2 3; do
-  CUDA_VISIBLE_DEVICES=$GPU python3 scripts/precompute_wan_vae_cache.py \
-    --dataset-root "$DATASET" \
-    --ckpt-dir data/weights/Wan2.2-TI2V-5B \
-    --out-dir "$CACHE" \
-    --resolution 480 \
-    --image-transform luminance \
-    --batch-size 4 \
-    --dtype bf16 \
-    --device cuda \
-    --num-shards 4 \
-    --shard-id "$GPU" &
-  PIDS+=("$!")
-done
-
-STATUS=0
-for PID in "${PIDS[@]}"; do
-  wait "$PID" || STATUS=1
-done
-test "$STATUS" -eq 0
+python3 scripts/objaverse_245_pipeline.py \
+  --gpus 0 1 2 3 \
+  cache --split train --image-transform rgb
 ```
 
-완료 scene 수를 확인합니다.
+HF 업로드까지 수행하려면 subcommand 앞에 `--upload`를 추가합니다.
 
 ```bash
-find "$CACHE/scenes" -name '*.pt' | wc -l
+python3 scripts/objaverse_245_pipeline.py \
+  --upload --gpus 0 1 2 3 \
+  cache --split all --image-transform rgb
 ```
+
+같은 pipeline에서 source-only MoGe point map과 PBR/mask PNG 압축도 실행합니다.
+
+```bash
+python3 scripts/objaverse_245_pipeline.py --gpus 0 1 2 3 pointmaps --split all
+python3 scripts/objaverse_245_pipeline.py pbr-masks
+```
+
+모든 압축본은 `.sha256` 생성과 `zstd` 무결성 검사를 통과한 뒤에만 업로드됩니다.
